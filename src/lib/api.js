@@ -194,3 +194,49 @@ export async function updateAdminChatSession(sessionId, patch) {
 export async function deleteAdminChatSession(sessionId) {
   return apiRequest(`/api/admin/chats?sessionId=${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
 }
+
+// ============================================================
+// CUSTOMER ACCOUNT ENDPOINTS (REGISTER / LOGIN / SESSION)
+// ============================================================
+const VALID_VN_PREFIXES_CLIENT = new Set([
+  '032', '033', '034', '035', '036', '037', '038', '039', '086', '096', '097', '098',
+  '070', '076', '077', '078', '079', '089', '090', '093',
+  '081', '082', '083', '084', '085', '088', '091', '094',
+  '052', '056', '058', '092', '055', '059', '087', '099'
+]);
+
+const JUNK_SEQ_CLIENT = [
+  '0123456', '1234567', '2345678', '3456789',
+  '9876543', '8765432', '7654321', '6543210'
+];
+
+export function validateRealVnPhoneClient(raw) {
+  let digits = String(raw || '').replace(/[^\d+]/g, '');
+  if (digits.startsWith('+84')) digits = '0' + digits.slice(3);
+  else if (digits.startsWith('84') && digits.length === 11) digits = '0' + digits.slice(2);
+  const phone = digits.replace(/\D/g, '');
+  if (phone.length !== 10) return { valid: false, phone, error: 'SĐT phải gồm đúng 10 chữ số (bắt đầu bằng 0).' };
+  const prefix = phone.slice(0, 3);
+  if (!VALID_VN_PREFIXES_CLIENT.has(prefix)) return { valid: false, phone, error: `Đầu số "${prefix}" không thuộc nhà mạng VN hợp lệ.` };
+  if (/(\d)\1{5,}/.test(phone)) return { valid: false, phone, error: 'SĐT lặp quá nhiều chữ số giống nhau — vui lòng nhập SĐT thật.' };
+  if (new Set(phone.slice(3).split('')).size <= 1) return { valid: false, phone, error: 'Vui lòng nhập SĐT thật đang sử dụng.' };
+  if (/^(\d{2})\1{3}$/.test(phone.slice(2))) return { valid: false, phone, error: 'SĐT lặp cặp số ảo — vui lòng nhập SĐT thật.' };
+  if (JUNK_SEQ_CLIENT.some((s) => phone.includes(s))) return { valid: false, phone, error: 'SĐT dạng dãy số liên tiếp không hợp lệ.' };
+  return { valid: true, phone, error: '' };
+}
+
+export async function fetchCustomerSession() {
+  return apiRequest('/api/account', { method: 'GET' });
+}
+
+export async function registerCustomerAccount(payload) {
+  return apiRequest('/api/account', { method: 'POST', body: { action: 'register', ...payload } });
+}
+
+export async function loginCustomerAccount(identifier, password) {
+  return apiRequest('/api/account', { method: 'POST', body: { action: 'login', identifier, password } });
+}
+
+export async function logoutCustomerAccount() {
+  return apiRequest('/api/account', { method: 'DELETE' });
+}

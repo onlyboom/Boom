@@ -1503,7 +1503,10 @@ export default function AdminPage() {
                     filteredCustomers.map((c) => (
                       <tr key={c.phone}>
                         <td>
-                          <div style={{ fontWeight: 700, color: '#fff' }}>{c.customer_name}</div>
+                          <div style={{ fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <span>{c.customer_name}</span>
+                            {c.username && <span className="admin-badge confirmed">@{c.username}</span>}
+                          </div>
                           {c.zalo_name && <div style={{ fontSize: 11.5, color: '#67e8f9' }}>Zalo: {c.zalo_name}</div>}
                           {c.note && <div style={{ fontSize: 11, color: '#fde68a' }}>📝 {c.note}</div>}
                         </td>

@@ -223,3 +223,72 @@ create index if not exists idx_zaloshop_chat_messages_session_created
   on public.zaloshop_chat_messages (session_id, created_at asc);
 
 alter table public.zaloshop_chat_messages enable row level security;
+
+-- 8. Bảng Tài Khoản Khách Hàng Đăng Ký (zaloshop_customer_accounts) + Hàm bcrypt (100% Server-Only)
+create table if not exists public.zaloshop_customer_accounts (
+  id uuid primary key default gen_random_uuid(),
+  username text unique not null,
+  phone text unique not null,
+  full_name text not null default '',
+  address text not null default '',
+  password_hash text not null,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_zaloshop_customer_accounts_created
+  on public.zaloshop_customer_accounts (created_at desc);
+
+alter table public.zaloshop_customer_accounts enable row level security;
+-- Không tạo policy cho anon/authenticated => 100% chỉ Server (service_role) & Localhost tool truy cập được!
+
+create or replace function public.register_zaloshop_customer(
+  p_username text,
+  p_phone text,
+  p_address text,
+  p_password text,
+  p_full_name text default ''
+)
+returns table (id uuid, username text, phone text, full_name text, address text, created_at timestamptz)
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_row public.zaloshop_customer_accounts%rowtype;
+begin
+  insert into public.zaloshop_customer_accounts (username, phone, full_name, address, password_hash)
+  values (
+    lower(trim(p_username)),
+    trim(p_phone),
+    coalesce(nullif(trim(p_full_name), ''), trim(p_username)),
+    trim(p_address),
+    extensions.crypt(p_password, extensions.gen_salt('bf'))
+  )
+  returning * into v_row;
+
+  return query
+  select v_row.id, v_row.username, v_row.phone, v_row.full_name, v_row.address, v_row.created_at;
+end;
+$$;
+
+create or replace function public.verify_zaloshop_customer(p_identifier text, p_password text)
+returns table (id uuid, username text, phone text, full_name text, address text)
+language sql
+security definer
+set search_path = public, extensions
+as $$
+  select a.id, a.username, a.phone, a.full_name, a.address
+  from public.zaloshop_customer_accounts a
+  where (lower(a.username) = lower(trim(p_identifier)) or a.phone = trim(p_identifier))
+    and a.is_active = true
+    and a.password_hash = extensions.crypt(p_password, a.password_hash)
+  limit 1;
+$$;
+
+revoke all on function public.register_zaloshop_customer(text, text, text, text, text) from public, anon, authenticated;
+grant execute on function public.register_zaloshop_customer(text, text, text, text, text) to service_role;
+
+revoke all on function public.verify_zaloshop_customer(text, text) from public, anon, authenticated;
+grant execute on function public.verify_zaloshop_customer(text, text) to service_role;

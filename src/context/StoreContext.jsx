@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import { fetchPublicProducts, fetchPublicPosts } from '../lib/api';
+import { fetchPublicProducts, fetchPublicPosts, fetchCustomerSession, logoutCustomerAccount } from '../lib/api';
 
 const StoreContext = createContext(null);
 
@@ -13,6 +13,9 @@ export function StoreProvider({ children }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [quickViewKey, setQuickViewKey] = useState(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [customerUser, setCustomerUser] = useState(null);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState('register'); // 'register' | 'login'
   const [toast, setToast] = useState({ show: false, text: '', isError: false });
 
   // Giữ nguyên tham số ?kho=...&acc=...&uid=... từ link Zalo AI Sale
@@ -77,9 +80,27 @@ export function StoreProvider({ children }) {
   useEffect(() => {
     reloadProducts(false);
     reloadPosts(false);
+    fetchCustomerSession()
+      .then((res) => {
+        if (res.authenticated && res.user) setCustomerUser(res.user);
+      })
+      .catch(() => {});
     const timer = setInterval(() => reloadProducts(true), 15000);
     return () => clearInterval(timer);
   }, [reloadProducts, reloadPosts]);
+
+  const openAuthModal = useCallback((mode = 'register') => {
+    setAuthModalMode(mode);
+    setAuthModalOpen(true);
+  }, []);
+
+  const closeAuthModal = useCallback(() => setAuthModalOpen(false), []);
+
+  const handleCustomerLogout = useCallback(async () => {
+    await logoutCustomerAccount().catch(() => {});
+    setCustomerUser(null);
+    showToast('Đã đăng xuất tài khoản.');
+  }, [showToast]);
 
   const setItemQty = useCallback(
     (product, nextQty) => {
@@ -140,6 +161,14 @@ export function StoreProvider({ children }) {
     checkoutOpen,
     openCheckout: () => setCheckoutOpen(true),
     closeCheckout: () => setCheckoutOpen(false),
+    customerUser,
+    setCustomerUser,
+    authModalOpen,
+    authModalMode,
+    setAuthModalMode,
+    openAuthModal,
+    closeAuthModal,
+    handleCustomerLogout,
     toast,
     showToast,
     zaloParams

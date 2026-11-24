@@ -9,9 +9,10 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const [custRes, ordRes] = await Promise.all([
+      const [custRes, ordRes, accRes] = await Promise.all([
         db.from('zaloshop_customers').select('*').order('updated_at', { ascending: false }),
-        db.from('zaloshop_orders').select('id,order_code,customer_name,phone,address,customer_uid,zalo_name,items,status,created_at').order('created_at', { ascending: false }).limit(1000)
+        db.from('zaloshop_orders').select('id,order_code,customer_name,phone,address,customer_uid,zalo_name,items,status,created_at').order('created_at', { ascending: false }).limit(1000),
+        db.from('zaloshop_customer_accounts').select('id,username,phone,full_name,address,created_at,updated_at').order('created_at', { ascending: false }).limit(1000)
       ]);
 
       // Nếu bảng zaloshop_orders chưa có cột zalo_name thì fallback query cũ
@@ -27,22 +28,49 @@ export default async function handler(req, res) {
 
       const byPhone = new Map();
       const savedCustomers = Array.isArray(custRes.data) ? custRes.data : [];
+      const registeredAccounts = Array.isArray(accRes?.data) ? accRes.data : [];
+
+      for (const a of registeredAccounts) {
+        const phone = normalizePhone(a.phone);
+        if (!phone) continue;
+        byPhone.set(phone, {
+          id: a.id,
+          phone,
+          username: a.username || '',
+          is_registered: true,
+          registered_at: a.created_at || null,
+          customer_name: a.full_name || a.username || 'Khách Web',
+          zalo_name: '',
+          customer_uid: '',
+          address: a.address || '',
+          note: `Tài khoản đăng ký: @${a.username}`,
+          order_count: 0,
+          total_qty: 0,
+          last_order_at: null,
+          updated_at: a.updated_at || a.created_at || null,
+          saved_in_table: true
+        });
+      }
 
       for (const c of savedCustomers) {
         const phone = normalizePhone(c.phone);
         if (!phone) continue;
+        const prev = byPhone.get(phone);
         byPhone.set(phone, {
           id: c.id,
           phone,
-          customer_name: c.customer_name || 'Khách Cửa Hàng',
+          username: prev?.username || '',
+          is_registered: Boolean(prev?.is_registered),
+          registered_at: prev?.registered_at || null,
+          customer_name: c.customer_name || prev?.customer_name || 'Khách Cửa Hàng',
           zalo_name: c.zalo_name || '',
           customer_uid: c.customer_uid || '',
-          address: c.address || '',
-          note: c.note || '',
+          address: c.address || prev?.address || '',
+          note: c.note || prev?.note || '',
           order_count: 0,
           total_qty: 0,
           last_order_at: null,
-          updated_at: c.updated_at || c.created_at || null,
+          updated_at: c.updated_at || c.created_at || prev?.updated_at || null,
           saved_in_table: true
         });
       }

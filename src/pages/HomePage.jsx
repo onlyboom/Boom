@@ -26,7 +26,7 @@ export default function HomePage() {
             <div>
               <h2 className="section-title">🔥 Sản Phẩm Sẵn Kho Nổi Bật</h2>
               <p className="section-sub">
-                Đồng bộ tồn kho trực tiếp từ PostgreSQL — chọn mẫu, trộn sỉ linh hoạt &amp; nhận báo giá riêng qua Zalo.
+                Kho sẵn hàng cập nhật liên tục — bán lẻ &amp; sỉ trộn mẫu linh hoạt, hỗ trợ báo giá nhanh qua Zalo.
               </p>
             </div>
             <Link to="/shop" className="section-link-btn">

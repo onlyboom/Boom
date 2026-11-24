@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingBag, Search, Home, Store, Package, Newspaper } from 'lucide-react';
+import { ShoppingBag, Search, Home, Store, Package, Newspaper, UserPlus, LogOut } from 'lucide-react';
 import StarfieldCanvas from './StarfieldCanvas';
 import SalesChatWidget from './SalesChatWidget';
+import AuthModal from './AuthModal';
 import { useStore } from '../context/StoreContext';
 import { submitPublicOrder } from '../lib/api';
 
@@ -20,6 +21,9 @@ export default function Layout({ children }) {
     checkoutOpen,
     openCheckout,
     closeCheckout,
+    customerUser,
+    openAuthModal,
+    handleCustomerLogout,
     toast,
     showToast,
     zaloParams
@@ -45,6 +49,16 @@ export default function Layout({ children }) {
   useEffect(() => {
     document.body.classList.toggle('has-cart-bar', totalCartQty > 0);
   }, [totalCartQty]);
+
+  useEffect(() => {
+    if (customerUser) {
+      if (!custName && (customerUser.full_name || customerUser.username)) {
+        setCustName(customerUser.full_name || customerUser.username);
+      }
+      if (!custPhone && customerUser.phone) setCustPhone(customerUser.phone);
+      if (!custAddress && customerUser.address) setCustAddress(customerUser.address);
+    }
+  }, [customerUser]);
 
   const handleSearchChange = (val) => {
     setSearchQuery(val);
@@ -167,8 +181,32 @@ export default function Layout({ children }) {
             <div className="header-actions">
               <div className="sync-chip" title="Đồng bộ tồn kho theo thời gian thực mỗi 15 giây">
                 <span className="sync-dot" />
-                <span>{products.length} mẫu sẵn kho</span>
+                <span>{products.length} mẫu</span>
               </div>
+              {customerUser ? (
+                <div className="header-user-pill">
+                  <span className="header-user-name" title={`SĐT: ${customerUser.phone}`}>
+                    👤 @{customerUser.username}
+                  </span>
+                  <button
+                    type="button"
+                    className="header-user-logout"
+                    title="Đăng xuất"
+                    onClick={handleCustomerLogout}
+                  >
+                    <LogOut size={13} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="header-auth-btn"
+                  onClick={() => openAuthModal('register')}
+                >
+                  <UserPlus size={15} />
+                  <span>Đăng ký</span>
+                </button>
+              )}
               <button
                 type="button"
                 className={`header-cart-btn ${totalCartQty > 0 ? 'has-items' : ''}`}
@@ -419,6 +457,7 @@ export default function Layout({ children }) {
         </div>
       )}
 
+      <AuthModal />
       <SalesChatWidget />
 
       {/* TOAST */}
