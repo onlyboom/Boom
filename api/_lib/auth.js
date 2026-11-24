@@ -19,9 +19,10 @@ function signPayload(payloadB64) {
   return crypto.createHmac('sha256', getSecret()).update(payloadB64).digest('base64url');
 }
 
-export function createSessionToken() {
+export function createSessionToken(username = 'admin') {
   const payload = {
     role: 'admin',
+    username: String(username || 'admin'),
     iat: Date.now(),
     exp: Date.now() + TOKEN_TTL_MS
   };
@@ -30,22 +31,29 @@ export function createSessionToken() {
   return `${b64}.${sig}`;
 }
 
-export function verifySessionToken(token) {
-  if (!token || typeof token !== 'string') return false;
+export function getSessionPayload(token) {
+  if (!token || typeof token !== 'string') return null;
   const parts = token.split('.');
-  if (parts.length !== 2) return false;
+  if (parts.length !== 2) return null;
   const [b64, sig] = parts;
   const expected = signPayload(b64);
   const sigBuf = Buffer.from(sig);
   const expBuf = Buffer.from(expected);
-  if (sigBuf.length !== expBuf.length) return false;
-  if (!crypto.timingSafeEqual(sigBuf, expBuf)) return false;
+  if (sigBuf.length !== expBuf.length) return null;
+  if (!crypto.timingSafeEqual(sigBuf, expBuf)) return null;
   try {
     const parsed = JSON.parse(Buffer.from(b64, 'base64url').toString('utf8'));
-    return parsed?.role === 'admin' && Number(parsed.exp) > Date.now();
+    if (parsed?.role === 'admin' && Number(parsed.exp) > Date.now()) {
+      return parsed;
+    }
+    return null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+export function verifySessionToken(token) {
+  return Boolean(getSessionPayload(token));
 }
 
 export function verifyPasscode(input) {
@@ -70,14 +78,19 @@ function parseCookies(cookieHeader) {
   return out;
 }
 
-export function isAdminRequest(req) {
+export function getAdminSession(req) {
   const cookies = parseCookies(req.headers?.cookie);
-  if (verifySessionToken(cookies[COOKIE_NAME])) return true;
+  const fromCookie = getSessionPayload(cookies[COOKIE_NAME]);
+  if (fromCookie) return fromCookie;
   const auth = String(req.headers?.authorization || '');
   if (auth.startsWith('Bearer ')) {
-    return verifySessionToken(auth.slice(7).trim());
+    return getSessionPayload(auth.slice(7).trim());
   }
-  return false;
+  return null;
+}
+
+export function isAdminRequest(req) {
+  return Boolean(getAdminSession(req));
 }
 
 export function setAdminCookie(res, token) {

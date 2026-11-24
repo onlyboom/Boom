@@ -56,8 +56,8 @@ export async function checkAdminSession() {
   return apiRequest('/api/admin/auth', { method: 'GET' });
 }
 
-export async function loginAdmin(passcode) {
-  return apiRequest('/api/admin/auth', { method: 'POST', body: { passcode } });
+export async function loginAdmin(username, password) {
+  return apiRequest('/api/admin/auth', { method: 'POST', body: { username, password } });
 }
 
 export async function logoutAdmin() {

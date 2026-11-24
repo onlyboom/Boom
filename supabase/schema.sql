@@ -145,3 +145,42 @@ drop policy if exists "Authenticated delete images" on storage.objects;
 create policy "Public view images"
   on storage.objects for select
   using (bucket_id = 'zaloshop-images');
+
+-- 6. Bảng Tài Khoản Quản Trị (zaloshop_admins) & Hàm xác thực bcrypt (Server-Only)
+create extension if not exists pgcrypto with schema extensions;
+
+create table if not exists public.zaloshop_admins (
+  id uuid primary key default gen_random_uuid(),
+  username text unique not null,
+  password_hash text not null,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.zaloshop_admins enable row level security;
+-- Không mở policy cho anon/authenticated => 100% chỉ Server (service_role) truy cập được!
+
+create or replace function public.verify_zaloshop_admin(p_username text, p_password text)
+returns table (id uuid, username text)
+language sql
+security definer
+set search_path = public, extensions
+as $$
+  select a.id, a.username
+  from public.zaloshop_admins a
+  where lower(a.username) = lower(trim(p_username))
+    and a.is_active = true
+    and a.password_hash = extensions.crypt(p_password, a.password_hash)
+  limit 1;
+$$;
+
+revoke all on function public.verify_zaloshop_admin(text, text) from public, anon, authenticated;
+grant execute on function public.verify_zaloshop_admin(text, text) to service_role;
+
+insert into public.zaloshop_admins (username, password_hash, is_active)
+values ('giahuy123', extensions.crypt('123456', extensions.gen_salt('bf')), true)
+on conflict (username) do update set
+  password_hash = excluded.password_hash,
+  is_active = true,
+  updated_at = now();

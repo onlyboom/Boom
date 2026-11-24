@@ -104,8 +104,10 @@ export default function AdminPage() {
 
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [authed, setAuthed] = useState(false);
+  const [adminUsername, setAdminUsername] = useState('');
   const [serverDbReady, setServerDbReady] = useState(true);
-  const [passcode, setPasscode] = useState('');
+  const [loginUser, setLoginUser] = useState('');
+  const [loginPass, setLoginPass] = useState('');
   const [loginBusy, setLoginBusy] = useState(false);
 
   const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'products' | 'customers' | 'posts'
@@ -172,6 +174,7 @@ export default function AdminPage() {
       .then((res) => {
         if (!active) return;
         setAuthed(Boolean(res.authenticated));
+        setAdminUsername(res.username || '');
         setServerDbReady(res.serverDbReady !== false);
       })
       .catch(() => {
@@ -196,19 +199,20 @@ export default function AdminPage() {
   // ============================================================
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (!passcode.trim()) {
-      showToast('Vui lòng nhập mã quản trị!', true);
+    if (!loginUser.trim() || !loginPass.trim()) {
+      showToast('Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!', true);
       return;
     }
     setLoginBusy(true);
     try {
-      const res = await loginAdmin(passcode.trim());
+      const res = await loginAdmin(loginUser.trim(), loginPass.trim());
       setAuthed(true);
+      setAdminUsername(res.username || loginUser.trim());
       setServerDbReady(res.serverDbReady !== false);
-      setPasscode('');
-      showToast('✅ Đăng nhập quản trị thành công!');
+      setLoginPass('');
+      showToast(`✅ Xin chào ${res.username || loginUser.trim()} — Đăng nhập thành công!`);
     } catch (err) {
-      showToast(`❌ ${err?.message || 'Sai mã quản trị'}`, true);
+      showToast(`❌ ${err?.message || 'Sai tài khoản hoặc mật khẩu'}`, true);
     } finally {
       setLoginBusy(false);
     }
@@ -217,6 +221,7 @@ export default function AdminPage() {
   const handleLogout = async () => {
     await logoutAdmin().catch(() => {});
     setAuthed(false);
+    setAdminUsername('');
     showToast('Đã đăng xuất phiên quản trị.');
   };
 
@@ -567,15 +572,28 @@ export default function AdminPage() {
 
           <form onSubmit={handleLogin}>
             <div className="admin-field">
-              <label htmlFor="inpAdminPasscode">Mã quản trị</label>
+              <label htmlFor="inpAdminUser">Tên đăng nhập</label>
               <input
-                id="inpAdminPasscode"
+                id="inpAdminUser"
+                type="text"
+                className="admin-input"
+                placeholder="Nhập tên đăng nhập..."
+                autoComplete="username"
+                value={loginUser}
+                onChange={(e) => setLoginUser(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="admin-field">
+              <label htmlFor="inpAdminPass">Mật khẩu</label>
+              <input
+                id="inpAdminPass"
                 type="password"
                 className="admin-input"
-                placeholder="Nhập mã quản trị..."
-                value={passcode}
-                onChange={(e) => setPasscode(e.target.value)}
-                autoFocus
+                placeholder="Nhập mật khẩu..."
+                autoComplete="current-password"
+                value={loginPass}
+                onChange={(e) => setLoginPass(e.target.value)}
               />
             </div>
             <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: 6 }} disabled={loginBusy}>
@@ -596,6 +614,7 @@ export default function AdminPage() {
         <div>
           <h1 className="section-title">🛡️ Trung Tâm Quản Trị AG STORE</h1>
           <p className="section-sub">
+            {adminUsername ? `Tài khoản: ${adminUsername} • ` : ''}
             Quản lý Đơn hàng, Tồn kho, Trưng bày sản phẩm, Khách đặt hàng &amp; Bài viết (100% xử lý qua Server API)
           </p>
         </div>
