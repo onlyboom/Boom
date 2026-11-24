@@ -35,7 +35,14 @@ function buildFailoverChain() {
     .filter((s) => s === 'gemini' || s === 'openai');
   const order = rawOrder.length > 0 ? rawOrder : ['gemini', 'openai'];
 
-  const geminiModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest', 'gemini-2.0-flash-lite'];
+  const geminiModels = [
+    'gemini-3.5-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-3.8-flash',
+    'gemini-flash-lite-latest',
+    'gemini-flash-latest',
+    'gemini-3.1-flash-lite'
+  ];
   const openaiModels = ['gpt-4o-mini', 'gpt-4.1-mini'];
 
   const slots = [];
