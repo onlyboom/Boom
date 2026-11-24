@@ -7,9 +7,8 @@ const VALID_STATUSES = new Set(['pending', 'confirmed', 'shipping', 'done', 'can
 async function syncCustomerProfile(db, { phone, customerName, zaloName, customerUid, address }) {
   const cleanPhone = normalizePhone(phone);
   if (!cleanPhone) return;
-  await db
-    .from('zaloshop_customers')
-    .upsert(
+  try {
+    await db.from('zaloshop_customers').upsert(
       [
         {
           phone: cleanPhone,
@@ -21,8 +20,8 @@ async function syncCustomerProfile(db, { phone, customerName, zaloName, customer
         }
       ],
       { onConflict: 'phone' }
-    )
-    .catch(() => {});
+    );
+  } catch {}
 }
 
 async function deductStockForItems(db, items) {

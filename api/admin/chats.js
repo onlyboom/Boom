@@ -29,7 +29,9 @@ export default async function handler(req, res) {
         }
 
         // Đánh dấu đã đọc khi Admin mở xem phiên chat
-        await db.from('zaloshop_chat_sessions').update({ unread_admin: 0 }).eq('session_id', sid).catch(() => {});
+        try {
+          await db.from('zaloshop_chat_sessions').update({ unread_admin: 0 }).eq('session_id', sid);
+        } catch {}
         return sendJson(res, 200, { ok: true, messages: messages || [] });
       }
 

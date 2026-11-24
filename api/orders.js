@@ -59,9 +59,8 @@ export default async function handler(req, res) {
     }
 
     // Tự động lưu / cập nhật hồ sơ khách hàng (nếu bảng zaloshop_customers đã tồn tại)
-    await db
-      .from('zaloshop_customers')
-      .upsert(
+    try {
+      await db.from('zaloshop_customers').upsert(
         [
           {
             phone,
@@ -73,8 +72,8 @@ export default async function handler(req, res) {
           }
         ],
         { onConflict: 'phone' }
-      )
-      .catch(() => {});
+      );
+    } catch {}
 
     return sendJson(res, 200, {
       ok: true,

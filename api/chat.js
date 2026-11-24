@@ -85,17 +85,17 @@ export default async function handler(req, res) {
         updated_at: nowIso
       };
 
-      await db.from('zaloshop_chat_sessions').upsert([sessionUpsert], { onConflict: 'session_id' }).catch(() => {});
-      await db
-        .from('zaloshop_chat_messages')
-        .insert([{ session_id: sessionId, sender: 'customer', content: message }])
-        .catch(() => {});
+      try {
+        await db.from('zaloshop_chat_sessions').upsert([sessionUpsert], { onConflict: 'session_id' });
+      } catch {}
+      try {
+        await db.from('zaloshop_chat_messages').insert([{ session_id: sessionId, sender: 'customer', content: message }]);
+      } catch {}
 
       // 3. Nếu khách để lại SĐT -> tự động đẩy sang bảng Khách hàng (zaloshop_customers) cho Admin chăm sóc!
       if (finalPhone) {
-        await db
-          .from('zaloshop_customers')
-          .upsert(
+        try {
+          await db.from('zaloshop_customers').upsert(
             [
               {
                 phone: finalPhone,
@@ -105,8 +105,8 @@ export default async function handler(req, res) {
               }
             ],
             { onConflict: 'phone' }
-          )
-          .catch(() => {});
+          );
+        } catch {}
       }
 
       // 4. Nếu Admin đã tiếp quản chat tay (ai_paused = true), không để AI chen ngang
@@ -129,9 +129,8 @@ export default async function handler(req, res) {
       });
 
       const replyIso = new Date().toISOString();
-      await db
-        .from('zaloshop_chat_messages')
-        .insert([
+      try {
+        await db.from('zaloshop_chat_messages').insert([
           {
             session_id: sessionId,
             sender: 'ai',
@@ -139,20 +138,21 @@ export default async function handler(req, res) {
             ai_provider: aiResult.provider,
             ai_model: aiResult.model
           }
-        ])
-        .catch(() => {});
+        ]);
+      } catch {}
 
-      await db
-        .from('zaloshop_chat_sessions')
-        .update({
-          last_message: aiResult.reply.slice(0, 300),
-          last_sender: 'ai',
-          ai_provider: aiResult.provider,
-          ai_model: aiResult.model,
-          updated_at: replyIso
-        })
-        .eq('session_id', sessionId)
-        .catch(() => {});
+      try {
+        await db
+          .from('zaloshop_chat_sessions')
+          .update({
+            last_message: aiResult.reply.slice(0, 300),
+            last_sender: 'ai',
+            ai_provider: aiResult.provider,
+            ai_model: aiResult.model,
+            updated_at: replyIso
+          })
+          .eq('session_id', sessionId);
+      } catch {}
 
       return sendJson(res, 200, {
         ok: true,
