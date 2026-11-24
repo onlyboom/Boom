@@ -1,8 +1,42 @@
 -- ============================================================
 -- AG STORE — SEED 130 SẢN PHẨM HIỆN TẠI (trích xuất từ kho hiện hành)
+-- Tự động đảm bảo bảng, cột (is_visible, is_featured) & bucket đã tồn tại trước khi nạp!
 -- An toàn chạy lại nhiều lần (ON CONFLICT (id) DO NOTHING)
--- Không ghi đè các chỉnh sửa mà Admin đã cập nhật trên web!
 -- ============================================================
+
+create table if not exists public.zaloshop_products (
+  id text primary key,
+  warehouse_name text not null default 'A_long',
+  item_id integer not null default 0,
+  code text not null default '',
+  category text not null default 'Hàng nhập',
+  name text not null,
+  so_luong integer not null default 0,
+  is_out_of_stock boolean not null default false,
+  is_visible boolean not null default true,
+  is_featured boolean not null default false,
+  ghi_chu text not null default '',
+  rel_path text not null default '',
+  image_url text not null default '',
+  updated_at timestamptz not null default now()
+);
+
+alter table public.zaloshop_products
+  add column if not exists is_visible boolean not null default true;
+alter table public.zaloshop_products
+  add column if not exists is_featured boolean not null default false;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'zaloshop-images',
+  'zaloshop-images',
+  true,
+  5242880,
+  array['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+)
+on conflict (id) do update set
+  public = true,
+  file_size_limit = 5242880;
 
 insert into public.zaloshop_products
   (id, warehouse_name, item_id, code, category, name, so_luong, is_out_of_stock, is_visible, is_featured, ghi_chu, rel_path, image_url)

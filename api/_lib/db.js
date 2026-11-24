@@ -1,8 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const DEFAULT_SUPABASE_URL = 'https://lthmthojuwdhfwwpdnjo.supabase.co';
-const DEFAULT_ANON_FALLBACK =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0aG10aG9qdXdkaGZ3d3BkbmpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0MjM2NDYsImV4cCI6MjExMDk5OTY0Nn0.mLePVfPMOFuNve9mnwmHaJikPINRjKpoOh1xt_DI4Cs';
+const DEFAULT_SUPABASE_URL = 'https://amycyqggsvucaeqamxpx.supabase.co';
+const DEFAULT_ANON_FALLBACK = 'sb_publishable_dXwdFDpsK9veF2sLVtbzTA_KrlKwFi7';
 
 let cachedClient = null;
 let cachedMode = 'anon';

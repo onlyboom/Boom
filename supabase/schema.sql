@@ -125,9 +125,18 @@ create policy "Public read published posts"
   using (published = true);
 
 -- 5. Storage Bucket cho ảnh sản phẩm & ảnh bìa bài viết (zaloshop-images)
-insert into storage.buckets (id, name, public)
-values ('zaloshop-images', 'zaloshop-images', true)
-on conflict (id) do nothing;
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'zaloshop-images',
+  'zaloshop-images',
+  true,
+  5242880,
+  array['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+)
+on conflict (id) do update set
+  public = true,
+  file_size_limit = 5242880,
+  allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
 drop policy if exists "Public view images" on storage.objects;
 drop policy if exists "Authenticated upload images" on storage.objects;
