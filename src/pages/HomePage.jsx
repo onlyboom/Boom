@@ -42,7 +42,7 @@ export default function HomePage() {
             </div>
             {loadingProducts ? (
               <div style={{ textAlign: 'center', padding: 48, color: '#94a3b8', fontWeight: 600 }}>
-                ⏳ Đang tải sản phẩm từ PostgreSQL / Supabase...
+                ⏳ Đang tải sản phẩm từ máy chủ kho...
               </div>
             ) : (
               <div className="product-grid">

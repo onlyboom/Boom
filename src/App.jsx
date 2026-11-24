@@ -24,6 +24,7 @@ export default function App() {
             <Route path="/bai-viet" element={<PostsPage />} />
             <Route path="/bai-viet/:slug" element={<PostDetailPage />} />
             <Route path="/admin" element={<AdminPage />} />
+            <Route path="/.admin" element={<AdminPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>

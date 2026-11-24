@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import { fetchProductsFromDb, fetchPostsFromDb } from '../lib/supabase';
+import { fetchPublicProducts, fetchPublicPosts } from '../lib/api';
 
 const StoreContext = createContext(null);
 
@@ -39,7 +39,7 @@ export function StoreProvider({ children }) {
     async (silent = false) => {
       if (!silent) setLoadingProducts(true);
       try {
-        const list = await fetchProductsFromDb(zaloParams.kho);
+        const list = await fetchPublicProducts(zaloParams.kho);
         setProducts(list);
         setProductsError('');
         // Tự điều chỉnh giỏ hàng nếu tồn kho thay đổi
@@ -60,7 +60,7 @@ export function StoreProvider({ children }) {
           return changed ? next : prev;
         });
       } catch (err) {
-        setProductsError(err?.message || 'Không tải được dữ liệu kho từ Supabase');
+        setProductsError(err?.message || 'Không tải được dữ liệu kho từ máy chủ');
       } finally {
         if (!silent) setLoadingProducts(false);
       }
@@ -68,10 +68,10 @@ export function StoreProvider({ children }) {
     [zaloParams.kho]
   );
 
-  const reloadPosts = useCallback(async (includeDrafts = false) => {
-    const res = await fetchPostsFromDb({ includeDrafts });
+  const reloadPosts = useCallback(async () => {
+    const res = await fetchPublicPosts();
     setPosts(res.posts || []);
-    setPostsSource(res.source || 'postgresql');
+    setPostsSource(res.source || 'database');
   }, []);
 
   useEffect(() => {

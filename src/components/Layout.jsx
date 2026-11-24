@@ -3,7 +3,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { ShoppingBag, Search, Home, Store, Package, Newspaper } from 'lucide-react';
 import StarfieldCanvas from './StarfieldCanvas';
 import { useStore } from '../context/StoreContext';
-import { submitOrderToDb } from '../lib/supabase';
+import { submitPublicOrder } from '../lib/api';
 
 export default function Layout({ children }) {
   const {
@@ -92,7 +92,7 @@ export default function Layout({ children }) {
     const now = new Date();
     const orderCode = `DH${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${Math.floor(10 + Math.random() * 89)}`;
     try {
-      await submitOrderToDb({
+      await submitPublicOrder({
         orderCode,
         customerName: custName.trim() || 'Khách Cửa Hàng',
         phone: custPhone.trim(),
@@ -164,7 +164,7 @@ export default function Layout({ children }) {
             </div>
 
             <div className="header-actions">
-              <div className="sync-chip" title="Đồng bộ PostgreSQL / Supabase mỗi 15 giây">
+              <div className="sync-chip" title="Đồng bộ tồn kho theo thời gian thực mỗi 15 giây">
                 <span className="sync-dot" />
                 <span>{products.length} mẫu sẵn kho</span>
               </div>
@@ -190,7 +190,7 @@ export default function Layout({ children }) {
                 <span className="ft-icon">⚡</span>
                 <div>
                   <h5>Tồn Kho Thực Tế 100%</h5>
-                  <p>Số lượng đồng bộ trực tiếp từ PostgreSQL theo thời gian thực, xác nhận đơn là giữ kho ngay.</p>
+                  <p>Số lượng đồng bộ trực tiếp từ hệ thống kho theo thời gian thực, xác nhận đơn là giữ kho ngay.</p>
                 </div>
               </div>
               <div className="ft-card">
@@ -262,7 +262,7 @@ export default function Layout({ children }) {
 
           <div className="footer-bottom">
             <span>© {new Date().getFullYear()} <strong>AG STORE</strong> — Catalog Mô Hình &amp; Đồ Chơi Sỉ Tận Xưởng</span>
-            <span className="footer-status-live">● Kết nối trực tiếp PostgreSQL / Supabase</span>
+            <span className="footer-status-live">● Hệ thống đồng bộ tồn kho trực tuyến</span>
           </div>
         </footer>
       </div>
