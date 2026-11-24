@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { ShoppingBag, Search, Home, Store, Package, Newspaper } from 'lucide-react';
 import StarfieldCanvas from './StarfieldCanvas';
+import SalesChatWidget from './SalesChatWidget';
 import { useStore } from '../context/StoreContext';
 import { submitPublicOrder } from '../lib/api';
 
@@ -417,6 +418,8 @@ export default function Layout({ children }) {
           </div>
         </div>
       )}
+
+      <SalesChatWidget />
 
       {/* TOAST */}
       <div className={`toast ${toast.show ? 'show' : ''} ${toast.isError ? 'err' : ''}`}>

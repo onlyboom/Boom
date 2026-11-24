@@ -13,7 +13,9 @@ import {
   Edit3,
   Star,
   RefreshCw,
-  Check
+  Check,
+  MessageCircle,
+  Send
 } from 'lucide-react';
 import {
   checkAdminSession,
@@ -34,7 +36,12 @@ import {
   createAdminPost,
   updateAdminPost,
   deleteAdminPost,
-  uploadAdminImage
+  uploadAdminImage,
+  fetchAdminChatSessions,
+  fetchAdminChatMessages,
+  sendAdminChatReply,
+  updateAdminChatSession,
+  deleteAdminChatSession
 } from '../lib/api';
 import { useStore } from '../context/StoreContext';
 
@@ -118,6 +125,11 @@ export default function AdminPage() {
   const [adminOrders, setAdminOrders] = useState([]);
   const [adminCustomers, setAdminCustomers] = useState([]);
   const [adminPosts, setAdminPosts] = useState([]);
+  const [adminChats, setAdminChats] = useState([]);
+  const [selectedChatId, setSelectedChatId] = useState('');
+  const [selectedChatMsgs, setSelectedChatMsgs] = useState([]);
+  const [chatReplyText, setChatReplyText] = useState('');
+  const [chatReplyBusy, setChatReplyBusy] = useState(false);
 
   // Products tab states
   const [editingProductKey, setEditingProductKey] = useState(null);
@@ -150,16 +162,18 @@ export default function AdminPage() {
   const loadAllAdminData = useCallback(async () => {
     setRefreshing(true);
     try {
-      const [prods, orders, custRes, posts] = await Promise.all([
+      const [prods, orders, custRes, posts, chatRes] = await Promise.all([
         fetchAdminProducts().catch(() => []),
         fetchAdminOrders().catch(() => []),
         fetchAdminCustomers().catch(() => ({ customers: [] })),
-        fetchAdminPosts().catch(() => [])
+        fetchAdminPosts().catch(() => []),
+        fetchAdminChatSessions().catch(() => ({ sessions: [] }))
       ]);
       setAdminProducts(prods);
       setAdminOrders(orders);
       setAdminCustomers(custRes.customers || []);
       setAdminPosts(posts);
+      setAdminChats(chatRes.sessions || []);
       const nextDrafts = {};
       for (const p of prods) nextDrafts[p.key] = p.soLuong;
       setStockDrafts(nextDrafts);
@@ -506,6 +520,69 @@ export default function AdminPage() {
   };
 
   // ============================================================
+  // CHAT INBOX HANDLERS (TRẢ KHÁCH TỪ AI VỀ ADMIN)
+  // ============================================================
+  const handleSelectChatSession = async (sessionId) => {
+    setSelectedChatId(sessionId);
+    try {
+      const res = await fetchAdminChatMessages(sessionId);
+      setSelectedChatMsgs(res.messages || []);
+      setAdminChats((prev) => prev.map((s) => (s.session_id === sessionId ? { ...s, unread_admin: 0 } : s)));
+    } catch (err) {
+      showToast(`❌ ${err?.message || 'Không tải được hội thoại'}`, true);
+    }
+  };
+
+  const handleSendAdminReply = async (e) => {
+    e.preventDefault();
+    if (!selectedChatId || !chatReplyText.trim()) return;
+    setChatReplyBusy(true);
+    try {
+      await sendAdminChatReply(selectedChatId, chatReplyText.trim(), true);
+      setChatReplyText('');
+      const [msgRes, sessRes] = await Promise.all([
+        fetchAdminChatMessages(selectedChatId),
+        fetchAdminChatSessions()
+      ]);
+      setSelectedChatMsgs(msgRes.messages || []);
+      setAdminChats(sessRes.sessions || []);
+      showToast('✅ Đã gửi tin nhắn trực tiếp cho khách!');
+    } catch (err) {
+      showToast(`❌ ${err?.message || 'Lỗi gửi tin nhắn'}`, true);
+    } finally {
+      setChatReplyBusy(false);
+    }
+  };
+
+  const handleToggleSessionAi = async (sess) => {
+    try {
+      const nextPaused = !sess.ai_paused;
+      await updateAdminChatSession(sess.session_id, { ai_paused: nextPaused });
+      setAdminChats((prev) =>
+        prev.map((s) => (s.session_id === sess.session_id ? { ...s, ai_paused: nextPaused } : s))
+      );
+      showToast(nextPaused ? '👤 Đã chuyển sang Admin trả lời tay (tạm dừng AI)' : '🤖 Đã bật lại AI tự động tư vấn');
+    } catch (err) {
+      showToast(`❌ ${err?.message || 'Lỗi cập nhật trạng thái AI'}`, true);
+    }
+  };
+
+  const handleDeleteChatSession = async (sess) => {
+    if (!window.confirm(`Xóa cuộc trò chuyện với "${sess.customer_name || 'Khách Web'}"?`)) return;
+    try {
+      await deleteAdminChatSession(sess.session_id);
+      if (selectedChatId === sess.session_id) {
+        setSelectedChatId('');
+        setSelectedChatMsgs([]);
+      }
+      await loadAllAdminData();
+      showToast('🗑️ Đã xóa hội thoại.');
+    } catch (err) {
+      showToast(`❌ ${err?.message || 'Lỗi xóa hội thoại'}`, true);
+    }
+  };
+
+  // ============================================================
   // FILTERED LISTS
   // ============================================================
   const filteredProducts = useMemo(() => {
@@ -691,6 +768,13 @@ export default function AdminPage() {
           onClick={() => setActiveTab('customers')}
         >
           <Users size={16} /> Khách đặt hàng ({adminCustomers.length})
+        </button>
+        <button
+          type="button"
+          className={`admin-tab-btn ${activeTab === 'chats' ? 'active' : ''}`}
+          onClick={() => setActiveTab('chats')}
+        >
+          <MessageCircle size={16} /> Khách Chat AI ({adminChats.length})
         </button>
         <button
           type="button"
@@ -1476,7 +1560,144 @@ export default function AdminPage() {
       )}
 
       {/* ============================================================
-          TAB 4: QUẢN LÝ BÀI VIẾT
+          TAB 4: KHÁCH CHAT TỪ CHATBOX AI (TRẢ KHÁCH VỀ ADMIN)
+         ============================================================ */}
+      {activeTab === 'chats' && (() => {
+        const activeSession = adminChats.find((s) => s.session_id === selectedChatId) || null;
+        return (
+          <div className="admin-grid-2">
+            <div className="admin-panel">
+              <h3>💬 Phiên Chat Từ Trang Chủ ({adminChats.length})</h3>
+              <div className="admin-chat-list">
+                {adminChats.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: 28, color: '#94a3b8', fontSize: 13 }}>
+                    Chưa có khách nào nhắn tin từ Chatbox trang chủ.
+                  </div>
+                ) : (
+                  adminChats.map((s) => (
+                    <button
+                      key={s.session_id}
+                      type="button"
+                      className={`admin-chat-item ${selectedChatId === s.session_id ? 'active' : ''}`}
+                      onClick={() => handleSelectChatSession(s.session_id)}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                        <strong style={{ color: '#fff', fontSize: 13.5 }}>
+                          {s.customer_name || 'Khách Web'}
+                        </strong>
+                        {Number(s.unread_admin || 0) > 0 && (
+                          <span className="admin-badge pending">{s.unread_admin} mới</span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                        {s.phone && <span className="admin-badge done">📞 {s.phone}</span>}
+                        <span className={`admin-badge ${s.ai_paused ? 'confirmed' : 'shipping'}`}>
+                          {s.ai_paused ? '👤 Admin chat tay' : `🤖 ${s.ai_model || 'AI'}`}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: '#94a3b8',
+                          marginTop: 6,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {s.last_message || '...'}
+                      </div>
+                      <div style={{ fontSize: 10.5, color: '#64748b', marginTop: 3 }}>
+                        {formatTime(s.updated_at)}
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="admin-panel">
+              {!activeSession ? (
+                <div style={{ textAlign: 'center', padding: 64, color: '#94a3b8' }}>
+                  👈 Chọn một cuộc trò chuyện bên trái để xem chi tiết &amp; nhắn trực tiếp cho khách.
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+                    <div>
+                      <h3 style={{ margin: 0 }}>
+                        {activeSession.customer_name || 'Khách Web'}{' '}
+                        {activeSession.phone ? <span style={{ color: '#6ee7b7', fontSize: 14 }}>• {activeSession.phone}</span> : null}
+                      </h3>
+                      <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 2 }}>
+                        Trang: {activeSession.page_path || '/'} • AI gần nhất: {activeSession.ai_provider || '—'}/{activeSession.ai_model || '—'}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        type="button"
+                        className={activeSession.ai_paused ? 'btn-amber-soft' : 'btn-cyan-soft'}
+                        onClick={() => handleToggleSessionAi(activeSession)}
+                      >
+                        {activeSession.ai_paused ? '🤖 Bật lại AI' : '👤 Tiếp quản (Tắt AI)'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-danger-soft"
+                        onClick={() => handleDeleteChatSession(activeSession)}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="admin-chat-thread">
+                    {selectedChatMsgs.map((m) => {
+                      const isCust = m.sender === 'customer';
+                      const isAdmin = m.sender === 'admin';
+                      return (
+                        <div key={m.id} className={`sales-chat-row ${isCust ? 'bot' : 'me'}`}>
+                          <div className="sales-chat-sender-tag">
+                            {isCust
+                              ? `👤 ${activeSession.customer_name || 'Khách'}`
+                              : isAdmin
+                                ? '🛡️ Admin trả lời'
+                                : `✨ AI (${m.ai_provider || 'auto'}/${m.ai_model || 'auto'})`}
+                          </div>
+                          <div className={`sales-chat-bubble ${isCust ? 'bot' : isAdmin ? 'admin' : 'me'}`}>
+                            {m.content}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <form onSubmit={handleSendAdminReply} style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      className="admin-input"
+                      placeholder="Nhập tin nhắn trả lời trực tiếp cho khách (tự động tạm dừng AI)..."
+                      value={chatReplyText}
+                      onChange={(e) => setChatReplyText(e.target.value)}
+                      disabled={chatReplyBusy}
+                    />
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={chatReplyBusy || !chatReplyText.trim()}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
+                    >
+                      <Send size={14} /> {chatReplyBusy ? 'Đang gửi...' : 'Gửi khách'}
+                    </button>
+                  </form>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ============================================================
+          TAB 5: QUẢN LÝ BÀI VIẾT
          ============================================================ */}
       {activeTab === 'posts' && (
         <div className="admin-grid-2">

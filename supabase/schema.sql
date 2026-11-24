@@ -184,3 +184,42 @@ on conflict (username) do update set
   password_hash = excluded.password_hash,
   is_active = true,
   updated_at = now();
+
+-- 7. Bảng Hội Thoại Chatbox Bán Hàng AI (zaloshop_chat_sessions & zaloshop_chat_messages)
+-- 100% Server-Only (không mở policy cho anon/authenticated => tuyệt đối không lộ hội thoại khách)
+create table if not exists public.zaloshop_chat_sessions (
+  session_id text primary key,
+  customer_name text not null default 'Khách Web',
+  phone text not null default '',
+  page_path text not null default '/',
+  last_message text not null default '',
+  last_sender text not null default 'customer',
+  ai_provider text not null default '',
+  ai_model text not null default '',
+  ai_paused boolean not null default false,
+  needs_human boolean not null default false,
+  unread_admin integer not null default 0,
+  status text not null default 'open',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_zaloshop_chat_sessions_updated
+  on public.zaloshop_chat_sessions (updated_at desc);
+
+alter table public.zaloshop_chat_sessions enable row level security;
+
+create table if not exists public.zaloshop_chat_messages (
+  id uuid primary key default gen_random_uuid(),
+  session_id text not null references public.zaloshop_chat_sessions(session_id) on delete cascade,
+  sender text not null check (sender in ('customer', 'ai', 'admin')),
+  content text not null,
+  ai_provider text not null default '',
+  ai_model text not null default '',
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_zaloshop_chat_messages_session_created
+  on public.zaloshop_chat_messages (session_id, created_at asc);
+
+alter table public.zaloshop_chat_messages enable row level security;

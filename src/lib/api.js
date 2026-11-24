@@ -160,3 +160,37 @@ export function uploadAdminImage(file) {
     reader.readAsDataURL(file);
   });
 }
+
+// ============================================================
+// PUBLIC SALES AI CHATBOX ENDPOINTS (100% Server-Only)
+// ============================================================
+export async function fetchChatHistory(sessionId) {
+  return apiRequest(`/api/chat?sessionId=${encodeURIComponent(sessionId)}`);
+}
+
+export async function sendChatMessage(payload) {
+  return apiRequest('/api/chat', { method: 'POST', body: payload });
+}
+
+// ============================================================
+// ADMIN CHAT INBOX & HUMAN TAKEOVER ENDPOINTS
+// ============================================================
+export async function fetchAdminChatSessions() {
+  return apiRequest('/api/admin/chats');
+}
+
+export async function fetchAdminChatMessages(sessionId) {
+  return apiRequest(`/api/admin/chats?sessionId=${encodeURIComponent(sessionId)}`);
+}
+
+export async function sendAdminChatReply(sessionId, content, pauseAi = true) {
+  return apiRequest('/api/admin/chats', { method: 'POST', body: { sessionId, content, pauseAi } });
+}
+
+export async function updateAdminChatSession(sessionId, patch) {
+  return apiRequest('/api/admin/chats', { method: 'PATCH', body: { sessionId, ...patch } });
+}
+
+export async function deleteAdminChatSession(sessionId) {
+  return apiRequest(`/api/admin/chats?sessionId=${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
+}
