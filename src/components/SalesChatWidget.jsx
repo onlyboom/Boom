@@ -7,9 +7,9 @@ const SESSION_STORAGE_KEY = 'agstore_chat_session_id_v1';
 const LEAD_STORAGE_KEY = 'agstore_chat_lead_v1';
 
 const QUICK_SUGGESTIONS = [
-  'Cho mình hỏi giá sỉ dòng Blokees nhé',
-  'Kho hiện đang có những mẫu nào sẵn hàng?',
-  'Chính sách trộn mẫu & giao hàng toàn quốc thế nào?'
+  'Mình muốn hỏi mua lẻ / sỉ dòng Blokees',
+  'Shop hiện có những mẫu nào đang sẵn hàng?',
+  'Tư vấn giúp mình chọn mẫu bán chạy / đẹp nhất nhé'
 ];
 
 function getOrCreateSessionId() {
@@ -36,7 +36,7 @@ export default function SalesChatWidget() {
       id: 'welcome',
       sender: 'ai',
       content:
-        'Dạ chào anh/chị đến với AG STORE! Em là trợ lý tư vấn kho sỉ mô hình & đồ chơi tận xưởng. Anh/chị cần tìm mẫu Blokees, hỏi tồn kho hay nhận bảng giá sỉ cứ nhắn em ngay nhé ạ!',
+        'Dạ chào anh/chị ghé AG STORE ạ! Bên em có bán cả lẻ lẫn sỉ mô hình Blokees & đồ chơi lắp ghép. Anh/chị đang tìm mẫu nào hay cần tư vấn cứ nhắn em nhé!',
       created_at: new Date().toISOString()
     }
   ]);
@@ -177,7 +177,7 @@ export default function SalesChatWidget() {
                 <span className="sales-chat-online-dot" />
               </div>
               <div>
-                <div className="sales-chat-title">Tư Vấn Sỉ AG STORE</div>
+                <div className="sales-chat-title">Tư Vấn AG STORE</div>
                 <div className="sales-chat-sub">
                   {aiPaused ? '👤 Nhân viên kho đang hỗ trợ trực tiếp' : '✨ Trợ lý AI trực kho 24/7'}
                 </div>
@@ -284,7 +284,7 @@ export default function SalesChatWidget() {
         ) : (
           <>
             <MessageCircle size={20} />
-            <span>Tư vấn sỉ AI</span>
+            <span>Chat tư vấn</span>
             <Sparkles size={14} className="sales-chat-spark" />
           </>
         )}

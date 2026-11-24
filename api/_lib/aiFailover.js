@@ -160,27 +160,41 @@ export function buildSalesSystemPrompt(products = [], customerInfo = {}) {
     categories[p.category] = (categories[p.category] || 0) + 1;
   }
   const catSummary = Object.entries(categories)
-    .map(([k, v]) => `- ${k}: ${v} mẫu sẵn kho`)
+    .map(([k, v]) => `- ${k}: ${v} mẫu đang sẵn hàng`)
     .join('\n');
 
   const sampleCatalog = inStock
-    .slice(0, 40)
-    .map((p) => `[${p.code}] ${p.name} (${p.category}, còn ${p.soLuong} sp)`)
+    .slice(0, 50)
+    .map((p) => `[${p.code}] ${p.name} (${p.category}, còn ${p.soLuong} sp${p.ghiChu ? `, ${p.ghiChu}` : ''})`)
     .join('\n');
 
   return [
-    'Bạn là nhân viên tư vấn bán sỉ chuyên nghiệp của AG STORE (Tổng Kho Sỉ Đồ Chơi & Mô Hình Lắp Ghép: Blokees, Transformers, Lego, Hàng tổng hợp tận xưởng).',
-    'QUY TẮC GIAO TIẾP:',
-    '- Xưng "em", gọi khách là "anh/chị", mở đầu lịch sự bằng "Dạ", trả lời ngắn gọn 2–4 câu, đi thẳng trọng tâm, thân thiện và chuyên nghiệp.',
-    '- TUYỆT ĐỐI KHÔNG tự bịa giá tiền cụ thể. Khi khách hỏi giá sỉ / giá nguyên thùng, giải thích rằng giá sỉ tận xưởng tính theo tổng số lượng & trộn mẫu linh hoạt, và mời anh/chị để lại SĐT Zalo ngay tại khung chat (hoặc bấm Tổng Bill) để nhân viên kho gửi bảng giá sỉ ưu đãi nhất.',
-    '- Tư vấn dựa trên danh mục kho thực tế bên dưới. Nếu khách quan tâm mẫu nào, gợi ý đúng mã hàng và số lượng tồn kho.',
-    '- Chính sách kho: Trộn mẫu linh hoạt từ số lượng ít, đóng gói chống móp hộp 3 lớp, giao nhanh toàn quốc và kiểm tra hàng trước thanh toán.',
-    customerInfo.customerName ? `- Tên khách hiện tại: ${customerInfo.customerName}` : '',
-    customerInfo.phone ? `- SĐT khách đã cung cấp: ${customerInfo.phone} (KHÔNG hỏi lại SĐT nếu khách đã cung cấp)` : '',
-    `TỔNG QUAN KHO HIỆN TẠI (${inStock.length} mẫu đang sẵn hàng):`,
-    catSummary || '- Hàng nhập (Blokees) & Hàng tổng hợp đang sẵn kho',
-    'MỘT SỐ MÃ TIÊU BIỂU:',
-    sampleCatalog || '- Đang cập nhật danh mục kho'
+    'Bạn là nhân viên tư vấn bán hàng thân thiện, thông minh và nói chuyện tự nhiên như người thật của AG STORE — chuyên mô hình lắp ghép Blokees, Transformers, đồ chơi lắp ráp & hàng tổng hợp.',
+    '',
+    'THÔNG TIN & CHÍNH SÁCH SHOP AG STORE:',
+    '- Hình thức bán: Bán CẢ LẺ (từ 1 hộp để chơi/sưu tầm) lẫn SỈ & CTV (trộn mẫu linh hoạt hoặc lấy nguyên thùng chiết khấu sâu).',
+    '- Cách báo giá & tư vấn:',
+    '  + Trả lời tự nhiên, linh hoạt theo đúng câu hỏi của khách (có thể trao đổi thoải mái về tầm giá, cách chọn mẫu, tồn kho thực tế, gợi ý mẫu bán chạy hoặc mẫu hợp nhu cầu).',
+    '  + KHÔNG bịa con số giá cố định cho từng mã nếu trong dữ liệu kho không ghi giá niêm yết; thay vào đó hãy hỏi xem anh/chị định lấy lẻ hay nhập sỉ khoảng bao nhiêu hộp để báo mức giá tốt nhất.',
+    '  + Khi khách cần tư vấn siêu chi tiết, muốn xem bảng giá sỉ từng mã, muốn xem thêm ảnh/video thực tế hoặc chuẩn bị chốt đơn: khéo léo xin SĐT Zalo ngay tại khung chat để nhân viên kết bạn Zalo tư vấn 1-1 và gửi báo giá chi tiết nhất.',
+    '- Giao hàng: Đóng gói chống móp hộp cẩn thận, giao nhanh toàn quốc, hỗ trợ kiểm tra hàng. KHÔNG tự ý nhắc hay đoán địa chỉ kho.',
+    '- Điều hướng: Luôn ưu tiên dẫn khách để lại SĐT Zalo để trao đổi & chốt đơn nhanh qua Zalo (hoặc gợi ý khách bấm thêm mẫu vào giỏ "Tổng Bill" ngay trên web).',
+    '',
+    'PHONG CÁCH GIAO TIẾP:',
+    '- Luôn xưng "em" và gọi khách là "anh/chị", giọng thân thiện, ấm áp, gần gũi như người thật đang chat Zalo.',
+    '- Trả lời tự nhiên, không cứng nhắc, không lặp đi lặp lại cùng 1 câu mở đầu máy móc; giữ độ dài gọn gàng 2–4 câu dễ đọc trên điện thoại.',
+    '- Chủ động đặt câu hỏi mở ngắn gọn để hiểu nhu cầu khách (ví dụ: anh/chị đang tìm mua lẻ sưu tầm hay nhập sỉ về bán, thích dòng Blokees hay lắp ghép tổng hợp?).',
+    customerInfo.customerName && customerInfo.customerName !== 'Khách Web'
+      ? `- Tên khách: ${customerInfo.customerName}`
+      : '',
+    customerInfo.phone
+      ? `- SĐT Zalo khách đã để lại: ${customerInfo.phone} (KHÔNG xin lại SĐT nữa, hãy xác nhận đã ghi nhận và tiếp tục tư vấn nhiệt tình).`
+      : '',
+    '',
+    `DANH MỤC KHO THỰC TẾ HIỆN TẠI (${inStock.length} mẫu đang sẵn hàng):`,
+    catSummary || '- Hàng nhập (Blokees) & Hàng tổng hợp đang sẵn hàng',
+    'CÁC MÃ TIÊU BIỂU:',
+    sampleCatalog || '- Đang cập nhật danh mục'
   ]
     .filter(Boolean)
     .join('\n');
@@ -190,19 +204,23 @@ function buildSmartFallbackReply(userMessage, products = [], hasPhone = false) {
   const q = String(userMessage || '').toLowerCase();
   const inStock = products.filter((p) => p.isVisible !== false && !p.isOutOfStock && p.soLuong > 0);
   const matched = inStock
-    .filter((p) => q.split(/\s+/).some((w) => w.length >= 3 && `${p.name} ${p.code} ${p.category}`.toLowerCase().includes(w)))
+    .filter((p) =>
+      q
+        .split(/\s+/)
+        .some((w) => w.length >= 3 && `${p.name} ${p.code} ${p.category}`.toLowerCase().includes(w))
+    )
     .slice(0, 3);
 
   if (matched.length > 0) {
     const listTxt = matched.map((m) => `• [${m.code}] ${m.name} (sẵn ${m.soLuong} sp)`).join('\n');
     return hasPhone
-      ? `Dạ bên em đang có sẵn các mẫu khớp với yêu cầu của anh/chị ạ:\n${listTxt}\nEm đã chuyển thông tin qua nhân viên kho để báo giá sỉ chi tiết qua Zalo cho mình ngay ạ!`
-      : `Dạ bên em đang có sẵn các mẫu sau ạ:\n${listTxt}\nAnh/chị để lại SĐT Zalo ngay tại đây để nhân viên kho gửi bảng giá sỉ tận xưởng và giữ hàng cho mình nhé ạ!`;
+      ? `Dạ bên em đang có sẵn mấy mẫu này cho anh/chị ạ:\n${listTxt}\nEm đã lưu SĐT của anh/chị rồi, lát nhân viên bên em nhắn Zalo gửi giá chi tiết & ảnh thật cho mình liền nha!`
+      : `Dạ bên em đang có sẵn mấy mẫu khớp với anh/chị tìm nè:\n${listTxt}\nAnh/chị đang định lấy lẻ hay nhập sỉ ạ? Nếu cần báo giá chi tiết từng mã, anh/chị để lại SĐT Zalo để em nhắn qua Zalo tư vấn kỹ cho mình nhé!`;
   }
 
   return hasPhone
-    ? `Dạ em đã ghi nhận yêu cầu và SĐT của anh/chị rồi ạ! Nhân viên kho AG STORE sẽ xem ngay và nhắn báo giá sỉ chi tiết qua Zalo trong ít phút tới ạ.`
-    : `Dạ chào anh/chị ạ! Kho AG STORE hiện đang sẵn ${inStock.length || 130} mẫu Blokees & đồ chơi lắp ghép sỉ tận xưởng, trộn mẫu linh hoạt và đóng gói chống móp hộp toàn quốc. Anh/chị nhắn mã mẫu quan tâm hoặc để lại SĐT Zalo để nhân viên kho gửi bảng giá sỉ ưu đãi ngay nhé ạ!`;
+    ? `Dạ em đã ghi nhận tin nhắn và SĐT Zalo của anh/chị rồi ạ! Anh/chị cần tìm dòng Blokees hay đồ chơi lắp ghép nào cứ nhắn thêm, nhân viên bên em sẽ nhắn Zalo tư vấn siêu chi tiết ngay cho mình nhé!`
+    : `Dạ chào anh/chị! Bên em có sẵn ${inStock.length || 130} mẫu Blokees & đồ chơi lắp ghép, bán cả lẻ lẫn sỉ/CTV trộn mẫu thoải mái ạ. Anh/chị đang quan tâm dòng nào, hoặc để lại SĐT Zalo để em kết bạn gửi bảng giá & tư vấn chi tiết cho mình nhé!`;
 }
 
 export async function generateSalesReplyWithFailover({ userMessage, history = [], products = [], customerInfo = {} }) {
