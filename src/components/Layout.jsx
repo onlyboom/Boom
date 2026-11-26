@@ -202,10 +202,6 @@ export default function Layout({ children }) {
             </div>
 
             <div className="header-actions">
-              <div className="sync-chip" title="Đồng bộ tồn kho theo thời gian thực mỗi 15 giây">
-                <span className="sync-dot" />
-                <span>{products.length} mẫu</span>
-              </div>
               {customerUser ? (
                 <div className="header-user-pill">
                   <span className="header-user-name" title={`SĐT: ${customerUser.phone}`}>
