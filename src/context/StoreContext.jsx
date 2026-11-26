@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { fetchPublicProducts, fetchPublicPosts, fetchCustomerSession, logoutCustomerAccount } from '../lib/api';
+import { ShopSFX } from '../lib/sfx';
 
 const StoreContext = createContext(null);
 
@@ -10,6 +11,8 @@ export function StoreProvider({ children }) {
   const [posts, setPosts] = useState([]);
   const [postsSource, setPostsSource] = useState('postgresql');
   const [cart, setCart] = useState({}); // { [key]: qty }
+  const [multiSelected, setMultiSelected] = useState({}); // { [key]: true }
+  const [sfxEnabled, setSfxEnabled] = useState(() => ShopSFX.isEnabled());
   const [searchQuery, setSearchQuery] = useState('');
   const [quickViewKey, setQuickViewKey] = useState(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -108,6 +111,9 @@ export function StoreProvider({ children }) {
       const maxStock = Math.max(0, Number(product.soLuong || 0));
       const clamped = Math.max(0, Math.min(maxStock, Number(nextQty) || 0));
       setCart((prev) => {
+        const oldQty = Number(prev[product.key] || 0);
+        if (clamped > oldQty) ShopSFX.add();
+        else if (clamped < oldQty) ShopSFX.remove();
         const next = { ...prev };
         if (clamped <= 0) delete next[product.key];
         else next[product.key] = clamped;
@@ -119,6 +125,55 @@ export function StoreProvider({ children }) {
     },
     [showToast]
   );
+
+  const toggleMultiSelect = useCallback((product) => {
+    if (!product || product.isOutOfStock) return;
+    setMultiSelected((prev) => {
+      const next = { ...prev };
+      if (next[product.key]) {
+        delete next[product.key];
+        ShopSFX.remove();
+      } else {
+        next[product.key] = true;
+        ShopSFX.click();
+      }
+      return next;
+    });
+  }, []);
+
+  const clearMultiSelect = useCallback(() => {
+    setMultiSelected({});
+    ShopSFX.click();
+  }, []);
+
+  const addMultiSelectedToCart = useCallback(() => {
+    const keys = Object.keys(multiSelected);
+    if (keys.length === 0) return;
+    const byKey = new Map(products.map((p) => [p.key, p]));
+    let addedCount = 0;
+    setCart((prev) => {
+      const next = { ...prev };
+      for (const k of keys) {
+        const prod = byKey.get(k);
+        if (!prod || prod.isOutOfStock || prod.soLuong <= 0) continue;
+        const cur = Number(next[k] || 0);
+        next[k] = Math.min(prod.soLuong, cur + 1);
+        addedCount++;
+      }
+      return next;
+    });
+    setMultiSelected({});
+    if (addedCount > 0) {
+      ShopSFX.success();
+      showToast(`✅ Đã thêm ${addedCount} sản phẩm đã chọn vào Tổng Bill!`);
+    }
+  }, [multiSelected, products, showToast]);
+
+  const toggleSfx = useCallback(() => {
+    const next = ShopSFX.setEnabled(!ShopSFX.isEnabled());
+    setSfxEnabled(next);
+    showToast(next ? '🔊 Đã bật hiệu ứng âm thanh (SFX)' : '🔇 Đã tắt hiệu ứng âm thanh');
+  }, [showToast]);
 
   const clearCart = useCallback(() => setCart({}), []);
 
@@ -152,12 +207,25 @@ export function StoreProvider({ children }) {
     totalCartQty,
     setItemQty,
     clearCart,
+    multiSelected,
+    multiSelectedCount: Object.keys(multiSelected).length,
+    toggleMultiSelect,
+    clearMultiSelect,
+    addMultiSelectedToCart,
+    sfxEnabled,
+    toggleSfx,
     searchQuery,
     setSearchQuery,
     quickViewKey,
     quickViewProduct,
-    openQuickView: (key) => setQuickViewKey(key),
-    closeQuickView: () => setQuickViewKey(null),
+    openQuickView: (key) => {
+      ShopSFX.spin();
+      setQuickViewKey(key);
+    },
+    closeQuickView: () => {
+      ShopSFX.click();
+      setQuickViewKey(null);
+    },
     checkoutOpen,
     openCheckout: () => setCheckoutOpen(true),
     closeCheckout: () => setCheckoutOpen(false),

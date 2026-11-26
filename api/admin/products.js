@@ -36,12 +36,17 @@ export default async function handler(req, res) {
         warehouse_name: warehouseName,
         item_id: itemId,
         code,
-        category: String(body.category || 'Hàng nhập').trim() || 'Hàng nhập',
+        category: String(body.category || 'Blokees').trim() || 'Blokees',
         name,
         so_luong: soLuong,
         is_out_of_stock: soLuong <= 0,
         is_visible: body.isVisible !== false,
         is_featured: Boolean(body.isFeatured),
+        gia_le: Math.max(0, parseInt(body.giaLe, 10) || 0),
+        gia_si: Math.max(0, parseInt(body.giaSi, 10) || 0),
+        gia_pdq: Math.max(0, parseInt(body.giaPdq, 10) || 0),
+        don_vi: String(body.donVi || 'Hộp').trim() || 'Hộp',
+        quy_cach: String(body.quyCach || '').trim(),
         ghi_chu: String(body.ghiChu || '').trim(),
         rel_path: String(body.relPath || '').trim(),
         image_url: String(body.imageUrl || '').trim() || '/ag-logo.jpg',
@@ -49,9 +54,9 @@ export default async function handler(req, res) {
       };
 
       let { data, error } = await db.from('zaloshop_products').insert([fullRow]).select().single();
-      // Tương thích ngược nếu cột is_visible / is_featured chưa chạy ALTER TABLE
+      // Tương thích ngược nếu cột mới chưa chạy ALTER TABLE
       if (error && /column .* does not exist/i.test(error.message || '')) {
-        const { is_visible, is_featured, ...legacyRow } = fullRow;
+        const { is_visible, is_featured, gia_le, gia_si, gia_pdq, don_vi, quy_cach, ...legacyRow } = fullRow;
         const retry = await db.from('zaloshop_products').insert([legacyRow]).select().single();
         data = retry.data;
         error = retry.error;
@@ -81,6 +86,11 @@ export default async function handler(req, res) {
       if (body.isOutOfStock !== undefined) dbPatch.is_out_of_stock = Boolean(body.isOutOfStock);
       if (body.isVisible !== undefined) dbPatch.is_visible = Boolean(body.isVisible);
       if (body.isFeatured !== undefined) dbPatch.is_featured = Boolean(body.isFeatured);
+      if (body.giaLe !== undefined) dbPatch.gia_le = Math.max(0, parseInt(body.giaLe, 10) || 0);
+      if (body.giaSi !== undefined) dbPatch.gia_si = Math.max(0, parseInt(body.giaSi, 10) || 0);
+      if (body.giaPdq !== undefined) dbPatch.gia_pdq = Math.max(0, parseInt(body.giaPdq, 10) || 0);
+      if (body.donVi !== undefined) dbPatch.don_vi = String(body.donVi).trim() || 'Hộp';
+      if (body.quyCach !== undefined) dbPatch.quy_cach = String(body.quyCach).trim();
       if (body.ghiChu !== undefined) dbPatch.ghi_chu = String(body.ghiChu);
       if (body.imageUrl !== undefined) dbPatch.image_url = String(body.imageUrl).trim() || '/ag-logo.jpg';
 
@@ -92,7 +102,7 @@ export default async function handler(req, res) {
         .single();
 
       if (error && /column .* does not exist/i.test(error.message || '')) {
-        const { is_visible, is_featured, ...legacyPatch } = dbPatch;
+        const { is_visible, is_featured, gia_le, gia_si, gia_pdq, don_vi, quy_cach, ...legacyPatch } = dbPatch;
         const retry = await db
           .from('zaloshop_products')
           .update(legacyPatch)

@@ -171,8 +171,11 @@ export function buildSalesSystemPrompt(products = [], customerInfo = {}) {
     .join('\n');
 
   const sampleCatalog = inStock
-    .slice(0, 50)
-    .map((p) => `[${p.code}] ${p.name} (${p.category}, còn ${p.soLuong} sp${p.ghiChu ? `, ${p.ghiChu}` : ''})`)
+    .slice(0, 60)
+    .map((p) => {
+      const priceTxt = p.giaLe > 0 ? `, giá lẻ ${p.giaLe.toLocaleString('vi-VN')}đ` : '';
+      return `[${p.code}] ${p.name} (${p.category}${priceTxt}, còn ${p.soLuong} sp)`;
+    })
     .join('\n');
 
   return [

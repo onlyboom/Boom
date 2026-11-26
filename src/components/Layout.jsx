@@ -6,6 +6,7 @@ import SalesChatWidget from './SalesChatWidget';
 import AuthModal from './AuthModal';
 import { useStore } from '../context/StoreContext';
 import { submitPublicOrder } from '../lib/api';
+import { ShopSFX } from '../lib/sfx';
 
 export default function Layout({ children }) {
   const {
@@ -14,6 +15,9 @@ export default function Layout({ children }) {
     totalCartQty,
     setItemQty,
     clearCart,
+    multiSelectedCount,
+    clearMultiSelect,
+    addMultiSelectedToCart,
     searchQuery,
     setSearchQuery,
     quickViewProduct,
@@ -39,6 +43,7 @@ export default function Layout({ children }) {
   const [custAddress, setCustAddress] = useState('');
   const [custNote, setCustNote] = useState('');
   const [submittingOrder, setSubmittingOrder] = useState(false);
+  const [qvSpinTick, setQvSpinTick] = useState(0);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -306,6 +311,24 @@ export default function Layout({ children }) {
         </footer>
       </div>
 
+      {/* MULTI-SELECT BULK BAR (CHỌN NHIỀU SẢN PHẨM CÙNG LÚC) */}
+      {multiSelectedCount > 0 && (
+        <div className={`multi-select-bar ${totalCartQty > 0 ? 'above-cart' : ''}`}>
+          <div className="ms-summary">
+            <strong>✅ Đang chọn {multiSelectedCount} sản phẩm cùng lúc</strong>
+            <span>Bấm thêm hàng loạt để đưa toàn bộ mẫu đã tích vào Tổng Bill</span>
+          </div>
+          <div className="ms-actions">
+            <button type="button" className="btn btn-ghost" onClick={clearMultiSelect}>
+              ✕ Bỏ chọn
+            </button>
+            <button type="button" className="btn btn-primary" onClick={addMultiSelectedToCart}>
+              ➕ Thêm {multiSelectedCount} mẫu vào Tổng Bill
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* FLOATING CART BAR */}
       <div className={`floating-cart-bar ${totalCartQty > 0 ? 'visible' : ''}`}>
         <div className="fc-summary">
@@ -322,12 +345,32 @@ export default function Layout({ children }) {
         </div>
       </div>
 
-      {/* QUICK VIEW MODAL */}
+      {/* QUICK VIEW MODAL — PHÓNG TO KHUNG HÌNH & XOAY NHANH 0.25s KHÔNG BIẾN DẠNG */}
       {quickViewProduct && (
         <div className="modal-backdrop open" onClick={closeQuickView}>
-          <div className="qv-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="qv-media">
-              <img src={quickViewProduct.imageUrl} alt={quickViewProduct.name} />
+          <div className="qv-modal qv-modal-enhanced" onClick={(e) => e.stopPropagation()}>
+            <div className="qv-media qv-media-stage">
+              <div
+                key={`${quickViewProduct.key}-${qvSpinTick}`}
+                className="qv-spin-frame"
+                title="Bấm để xoay lại 360°"
+                onClick={() => {
+                  ShopSFX.spin();
+                  setQvSpinTick((n) => n + 1);
+                }}
+              >
+                <img src={quickViewProduct.imageUrl} alt={quickViewProduct.name} />
+              </div>
+              <button
+                type="button"
+                className="qv-replay-spin-btn"
+                onClick={() => {
+                  ShopSFX.spin();
+                  setQvSpinTick((n) => n + 1);
+                }}
+              >
+                🔄 Xoay 360° (0.25s)
+              </button>
             </div>
             <div className="qv-info">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
@@ -336,18 +379,27 @@ export default function Layout({ children }) {
                   ✕
                 </button>
               </div>
-              <h3 style={{ margin: '6px 0', color: '#fff', fontSize: 20 }}>{quickViewProduct.name}</h3>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-                <span className="h3d-code">{quickViewProduct.code}</span>
+              <h3 style={{ margin: '6px 0', color: '#fff', fontSize: 19, lineHeight: 1.35 }}>{quickViewProduct.name}</h3>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                <span className="h3d-code">Mã: {quickViewProduct.code}</span>
                 <span className="p-stock-txt">
                   {quickViewProduct.isOutOfStock ? 'Tạm hết hàng' : `● Sẵn ${quickViewProduct.soLuong} sp trong kho`}
                 </span>
               </div>
-              {quickViewProduct.ghiChu && (
-                <p style={{ fontSize: 13, color: '#cbd5e1', margin: '0 0 12px' }}>📝 {quickViewProduct.ghiChu}</p>
+              {quickViewProduct.giaLe > 0 && (
+                <div className="qv-price-box">
+                  <span>Giá niêm yết:</span>
+                  <strong>{quickViewProduct.giaLe.toLocaleString('vi-VN')}đ</strong>
+                  {quickViewProduct.donVi && <small>/ {quickViewProduct.donVi === 'PDQ' ? 'hộp' : quickViewProduct.donVi}</small>}
+                </div>
               )}
-              <div style={{ fontSize: 13.5, fontWeight: 800, color: '#fbbf24', marginBottom: 14 }}>
-                💰 Giá sỉ / Giá nguyên thùng: Nhận báo giá riêng qua Zalo
+              {(quickViewProduct.quyCach || quickViewProduct.ghiChu) && (
+                <p style={{ fontSize: 12.5, color: '#cbd5e1', margin: '0 0 10px', lineHeight: 1.5 }}>
+                  📦 {quickViewProduct.quyCach || quickViewProduct.ghiChu}
+                </p>
+              )}
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: '#fbbf24', marginBottom: 14 }}>
+                💰 Giá sỉ / Nguyên thùng chiết khấu sâu: Nhắn Zalo hoặc đặt Tổng Bill để nhận báo giá tốt nhất
               </div>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 'auto' }}>
                 {!quickViewProduct.isOutOfStock && (

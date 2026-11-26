@@ -27,6 +27,16 @@ alter table public.zaloshop_products
   add column if not exists is_visible boolean not null default true;
 alter table public.zaloshop_products
   add column if not exists is_featured boolean not null default false;
+alter table public.zaloshop_products
+  add column if not exists gia_le integer not null default 0;
+alter table public.zaloshop_products
+  add column if not exists gia_si integer not null default 0;
+alter table public.zaloshop_products
+  add column if not exists gia_pdq integer not null default 0;
+alter table public.zaloshop_products
+  add column if not exists don_vi text not null default 'Hộp';
+alter table public.zaloshop_products
+  add column if not exists quy_cach text not null default '';
 
 create index if not exists idx_zaloshop_products_warehouse
   on public.zaloshop_products (warehouse_name, item_id);

@@ -13,6 +13,8 @@ export default function ShopPage({ hideHero = false, pageTitle = '' }) {
     searchQuery,
     totalCartQty,
     openCheckout,
+    sfxEnabled,
+    toggleSfx,
     zaloParams
   } = useStore();
 
@@ -52,6 +54,10 @@ export default function ShopPage({ hideHero = false, pageTitle = '' }) {
 
     if (sortBy === 'in_stock_first') {
       list = [...list].sort((a, b) => Number(a.isOutOfStock) - Number(b.isOutOfStock) || b.soLuong - a.soLuong);
+    } else if (sortBy === 'price_asc') {
+      list = [...list].sort((a, b) => (a.giaLe || 999999999) - (b.giaLe || 999999999));
+    } else if (sortBy === 'price_desc') {
+      list = [...list].sort((a, b) => (b.giaLe || 0) - (a.giaLe || 0));
     } else if (sortBy === 'stock_desc') {
       list = [...list].sort((a, b) => b.soLuong - a.soLuong);
     } else if (sortBy === 'name_asc') {
@@ -77,7 +83,7 @@ export default function ShopPage({ hideHero = false, pageTitle = '' }) {
           <div className="section-head-row" style={{ marginBottom: 14 }}>
             <div>
               <h1 className="section-title">{pageTitle}</h1>
-              <p className="section-sub">Toàn bộ danh mục sản phẩm cập nhật trực tiếp từ kho PostgreSQL.</p>
+              <p className="section-sub">Toàn bộ danh mục sản phẩm cập nhật đầy đủ giá &amp; tồn kho thực tế.</p>
             </div>
           </div>
         )}
@@ -154,10 +160,20 @@ export default function ShopPage({ hideHero = false, pageTitle = '' }) {
             </label>
             <select className="sort-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
               <option value="default">Sắp xếp: Mặc định</option>
+              <option value="price_asc">Giá thấp → cao</option>
+              <option value="price_desc">Giá cao → thấp</option>
               <option value="in_stock_first">Ưu tiên sẵn hàng</option>
               <option value="stock_desc">Tồn kho nhiều nhất</option>
               <option value="name_asc">Tên A → Z</option>
             </select>
+            <button
+              type="button"
+              className={`btn-sfx-pill ${sfxEnabled ? '' : 'muted'}`}
+              title="Bật/tắt âm thanh hiệu ứng (SFX)"
+              onClick={toggleSfx}
+            >
+              {sfxEnabled ? '🔊 SFX' : '🔇 Tắt'}
+            </button>
           </div>
         </div>
 
