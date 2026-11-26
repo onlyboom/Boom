@@ -61,7 +61,7 @@ export default async function handler(req, res) {
           .eq('session_id', sessionId)
           .order('created_at', { ascending: true })
           .limit(20),
-        db.from('zaloshop_products').select('*').order('item_id', { ascending: true }).limit(200)
+        db.from('zaloshop_products').select('*').order('item_id', { ascending: true }).limit(500)
       ]);
 
       const existingSess = existingSessRes.data || null;
