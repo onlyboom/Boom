@@ -21,13 +21,28 @@ export function StoreProvider({ children }) {
   const [authModalMode, setAuthModalMode] = useState('register'); // 'register' | 'login'
   const [toast, setToast] = useState({ show: false, text: '', isError: false });
 
-  // Giữ nguyên tham số ?kho=...&acc=...&uid=... từ link Zalo AI Sale
+  // Giữ nguyên & lưu bền vững tham số ?s=...&u=... (hoặc ?acc=...&uid=...) từ link Zalo AI Sale vào localStorage
+  // rồi dọn sạch URL trên thanh địa chỉ cho gọn đẹp!
   const [zaloParams] = useState(() => {
     const p = new URLSearchParams(window.location.search);
+    const urlKho = (p.get('kho') || p.get('warehouse') || '').trim();
+    const urlAcc = (p.get('s') || p.get('acc') || '').trim();
+    const urlUid = (p.get('u') || p.get('uid') || '').trim();
+    let savedAcc = '';
+    let savedUid = '';
+    try {
+      if (urlAcc) localStorage.setItem('ag_sale_acc', urlAcc);
+      if (urlUid) localStorage.setItem('ag_sale_uid', urlUid);
+      savedAcc = localStorage.getItem('ag_sale_acc') || '';
+      savedUid = localStorage.getItem('ag_sale_uid') || '';
+      if (urlAcc || urlUid) {
+        window.history.replaceState({}, '', window.location.pathname || '/');
+      }
+    } catch {}
     return {
-      kho: (p.get('kho') || p.get('warehouse') || '').trim(),
-      acc: (p.get('acc') || '').trim(),
-      uid: (p.get('uid') || '').trim()
+      kho: urlKho,
+      acc: urlAcc || savedAcc,
+      uid: urlUid || savedUid
     };
   });
 
