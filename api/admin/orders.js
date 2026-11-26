@@ -47,6 +47,34 @@ async function deductStockForItems(db, items) {
   }
 }
 
+async function restoreStockForItems(db, items) {
+  for (const it of Array.isArray(items) ? items : []) {
+    const prodKey = String(it?.key || '').trim();
+    const prodCode = String(it?.code || '').trim();
+    const qty = Math.max(0, parseInt(it?.qty, 10) || 0);
+    if ((!prodKey && !prodCode) || qty <= 0) continue;
+    let prod = null;
+    if (prodKey) {
+      const r = await db.from('zaloshop_products').select('id,so_luong').eq('id', prodKey).maybeSingle();
+      prod = r.data || null;
+    }
+    if (!prod && prodCode) {
+      const r = await db.from('zaloshop_products').select('id,so_luong').eq('code', prodCode).maybeSingle();
+      prod = r.data || null;
+    }
+    if (!prod) continue;
+    const nextQty = Math.max(0, Number(prod.so_luong || 0)) + qty;
+    await db
+      .from('zaloshop_products')
+      .update({
+        so_luong: nextQty,
+        is_out_of_stock: nextQty <= 0,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', prod.id);
+  }
+}
+
 export default async function handler(req, res) {
   if (!requireAdmin(req, res)) return;
 
@@ -163,6 +191,13 @@ export default async function handler(req, res) {
           .filter((it) => it.qty > 0);
       }
 
+      // Đọc trạng thái cũ trước khi cập nhật để tự hồi kho nếu chuyển sang 'cancelled'
+      const { data: prevOrder } = await db
+        .from('zaloshop_orders')
+        .select('id,status,items')
+        .eq('id', id)
+        .maybeSingle();
+
       let { data, error } = await db
         .from('zaloshop_orders')
         .update(patch)
@@ -184,6 +219,10 @@ export default async function handler(req, res) {
 
       if (error) {
         return sendJson(res, 500, { ok: false, error: formatDbWriteError(error, hasServiceRole) });
+      }
+
+      if (patch.status === 'cancelled' && prevOrder && prevOrder.status !== 'cancelled') {
+        await restoreStockForItems(db, prevOrder.items);
       }
 
       if (data?.phone) {
@@ -208,9 +247,18 @@ export default async function handler(req, res) {
       }
       if (!targetId) return sendJson(res, 400, { ok: false, error: 'Thiếu ID đơn hàng cần xóa.' });
 
+      const { data: prevOrder } = await db
+        .from('zaloshop_orders')
+        .select('id,status,items')
+        .eq('id', targetId)
+        .maybeSingle();
+
       const { error } = await db.from('zaloshop_orders').delete().eq('id', targetId);
       if (error) {
         return sendJson(res, 500, { ok: false, error: formatDbWriteError(error, hasServiceRole) });
+      }
+      if (prevOrder && prevOrder.status !== 'cancelled') {
+        await restoreStockForItems(db, prevOrder.items);
       }
       return sendJson(res, 200, { ok: true, deletedId: targetId });
     }
