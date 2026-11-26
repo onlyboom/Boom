@@ -409,18 +409,6 @@ export default function Layout({ children }) {
                 </button>
                 <button
                   type="button"
-                  className="qv-zoom-level"
-                  title="Đưa về 100%"
-                  onClick={() => {
-                    ShopSFX.click();
-                    setQvZoom(1);
-                    setQvPan({ x: 0, y: 0 });
-                  }}
-                >
-                  {Math.round(qvZoom * 100)}%
-                </button>
-                <button
-                  type="button"
                   className="qv-zoom-btn"
                   disabled={qvZoom >= 3}
                   title="Phóng to"

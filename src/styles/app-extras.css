@@ -1342,12 +1342,12 @@ body.has-cart-bar .sales-chat-root {
   justify-content: center;
 }
 .qv-media-frameless .qv-spin-frame img {
-  width: 100% !important;
-  height: 100% !important;
+  width: auto !important;
+  height: auto !important;
   max-width: 100% !important;
   max-height: 100% !important;
   object-fit: contain !important;
-  border-radius: 14px;
+  border-radius: 10px;
   filter: drop-shadow(0 18px 38px rgba(0, 0, 0, 0.72));
 }
 .qv-zoom-controls {
@@ -1407,4 +1407,34 @@ body.has-cart-bar .sales-chat-root {
   .qv-media-frameless {
     height: min(360px, 48vh);
   }
+}
+
+/* NÚT ĐẶT NGAY + HỦY CHỌN KẾ BÊN */
+.p-picked-row-v2 {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+.p-picked-btns {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+}
+.btn-cancel-card {
+  padding: 0 11px;
+  height: 34px;
+  border-radius: 9px;
+  border: 1px solid rgba(244, 63, 94, 0.48);
+  background: rgba(244, 63, 94, 0.14);
+  color: #fda4af;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.16s ease;
+}
+.btn-cancel-card:hover {
+  background: rgba(244, 63, 94, 0.32);
+  color: #ffffff;
+  border-color: #f43f5e;
 }

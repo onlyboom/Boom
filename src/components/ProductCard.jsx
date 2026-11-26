@@ -73,7 +73,7 @@ export default function ProductCard({ product }) {
                 + Chọn đặt hàng
               </button>
             ) : (
-              <div className="p-picked-row">
+              <div className="p-picked-row p-picked-row-v2">
                 <div className="qty-stepper">
                   <button type="button" onClick={() => setItemQty(product, pickedQty - 1)}>
                     −
@@ -89,9 +89,19 @@ export default function ProductCard({ product }) {
                     +
                   </button>
                 </div>
-                <button type="button" className="btn-order-card" onClick={openCheckout}>
-                  Đặt ngay
-                </button>
+                <div className="p-picked-btns">
+                  <button type="button" className="btn-order-card" onClick={openCheckout}>
+                    Đặt ngay
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-cancel-card"
+                    title="Hủy chọn sản phẩm này"
+                    onClick={() => setItemQty(product, 0)}
+                  >
+                    Hủy
+                  </button>
+                </div>
               </div>
             )}
           </div>
