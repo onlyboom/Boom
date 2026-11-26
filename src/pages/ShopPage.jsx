@@ -29,6 +29,11 @@ export default function ShopPage({ hideHero = false, pageTitle = '' }) {
     return Array.from(set);
   }, [products]);
 
+  const scopedTotal = useMemo(() => {
+    if (selectedWarehouse === 'ALL') return products.length;
+    return products.filter((p) => p.warehouseName === selectedWarehouse).length;
+  }, [products, selectedWarehouse]);
+
   const categories = useMemo(() => {
     const counts = new Map();
     for (const p of products) {
@@ -126,7 +131,7 @@ export default function ShopPage({ hideHero = false, pageTitle = '' }) {
                 onClick={() => setSelectedCategory('ALL')}
               >
                 <span>Tất cả</span>
-                <span className="cnt">{filtered.length}</span>
+                <span className="cnt">{scopedTotal}</span>
               </button>
               {categories.map(([cat, cnt]) => (
                 <button

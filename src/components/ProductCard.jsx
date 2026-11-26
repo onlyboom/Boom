@@ -40,7 +40,7 @@ export default function ProductCard({ product }) {
           <div className="p-img-float-box">
             <img src={product.imageUrl} loading="lazy" alt={product.name} />
           </div>
-          <span className="p-zoom-hint">🔄 Xem chi tiết 360°</span>
+          <span className="p-zoom-hint">🔍 Xem chi tiết</span>
         </div>
 
         <div className="p-body">

@@ -43,7 +43,25 @@ export default function Layout({ children }) {
   const [custAddress, setCustAddress] = useState('');
   const [custNote, setCustNote] = useState('');
   const [submittingOrder, setSubmittingOrder] = useState(false);
-  const [qvSpinTick, setQvSpinTick] = useState(0);
+  const [qvZoom, setQvZoom] = useState(1);
+  const [qvPan, setQvPan] = useState({ x: 0, y: 0 });
+  const [qvDragging, setQvDragging] = useState(false);
+  const [qvDragStart, setQvDragStart] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    setQvZoom(1);
+    setQvPan({ x: 0, y: 0 });
+    setQvDragging(false);
+  }, [quickViewProduct?.key]);
+
+  const adjustQvZoom = (delta) => {
+    ShopSFX.click();
+    setQvZoom((prev) => {
+      const next = Math.max(1, Math.min(3, Math.round((prev + delta) * 4) / 4));
+      if (next <= 1) setQvPan({ x: 0, y: 0 });
+      return next;
+    });
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -345,32 +363,72 @@ export default function Layout({ children }) {
         </div>
       </div>
 
-      {/* QUICK VIEW MODAL — PHÓNG TO KHUNG HÌNH & XOAY NHANH 0.25s KHÔNG BIẾN DẠNG */}
+      {/* QUICK VIEW MODAL — KHÔNG NỀN, PHÓNG TO RÕ NÉT, XOAY 0.25s + ZOOM IN/OUT */}
       {quickViewProduct && (
         <div className="modal-backdrop open" onClick={closeQuickView}>
           <div className="qv-modal qv-modal-enhanced" onClick={(e) => e.stopPropagation()}>
-            <div className="qv-media qv-media-stage">
-              <div
-                key={`${quickViewProduct.key}-${qvSpinTick}`}
-                className="qv-spin-frame"
-                title="Bấm để xoay lại 360°"
-                onClick={() => {
-                  ShopSFX.spin();
-                  setQvSpinTick((n) => n + 1);
-                }}
-              >
-                <img src={quickViewProduct.imageUrl} alt={quickViewProduct.name} />
+            <div
+              className={`qv-media qv-media-frameless ${qvZoom > 1 ? 'is-zoomed' : ''}`}
+              onWheel={(e) => {
+                e.preventDefault();
+                adjustQvZoom(e.deltaY < 0 ? 0.25 : -0.25);
+              }}
+              onMouseDown={(e) => {
+                if (qvZoom <= 1) return;
+                setQvDragging(true);
+                setQvDragStart({ x: e.clientX - qvPan.x, y: e.clientY - qvPan.y });
+              }}
+              onMouseMove={(e) => {
+                if (!qvDragging || qvZoom <= 1) return;
+                setQvPan({ x: e.clientX - qvDragStart.x, y: e.clientY - qvDragStart.y });
+              }}
+              onMouseUp={() => setQvDragging(false)}
+              onMouseLeave={() => setQvDragging(false)}
+            >
+              <div key={quickViewProduct.key} className="qv-spin-frame">
+                <img
+                  src={quickViewProduct.imageUrl}
+                  alt={quickViewProduct.name}
+                  draggable={false}
+                  style={{
+                    transform: `translate3d(${qvPan.x}px, ${qvPan.y}px, 0) scale(${qvZoom})`,
+                    transition: qvDragging ? 'none' : 'transform 0.16s ease-out'
+                  }}
+                />
               </div>
-              <button
-                type="button"
-                className="qv-replay-spin-btn"
-                onClick={() => {
-                  ShopSFX.spin();
-                  setQvSpinTick((n) => n + 1);
-                }}
-              >
-                🔄 Xoay 360° (0.25s)
-              </button>
+
+              <div className="qv-zoom-controls" onClick={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  className="qv-zoom-btn"
+                  disabled={qvZoom <= 1}
+                  title="Thu nhỏ"
+                  onClick={() => adjustQvZoom(-0.25)}
+                >
+                  −
+                </button>
+                <button
+                  type="button"
+                  className="qv-zoom-level"
+                  title="Đưa về 100%"
+                  onClick={() => {
+                    ShopSFX.click();
+                    setQvZoom(1);
+                    setQvPan({ x: 0, y: 0 });
+                  }}
+                >
+                  {Math.round(qvZoom * 100)}%
+                </button>
+                <button
+                  type="button"
+                  className="qv-zoom-btn"
+                  disabled={qvZoom >= 3}
+                  title="Phóng to"
+                  onClick={() => adjustQvZoom(0.25)}
+                >
+                  +
+                </button>
+              </div>
             </div>
             <div className="qv-info">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
