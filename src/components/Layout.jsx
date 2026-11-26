@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { ShoppingBag, Search, Home, Store, Package, Newspaper, UserPlus, LogOut } from 'lucide-react';
 import StarfieldCanvas from './StarfieldCanvas';
@@ -47,12 +47,36 @@ export default function Layout({ children }) {
   const [qvPan, setQvPan] = useState({ x: 0, y: 0 });
   const [qvDragging, setQvDragging] = useState(false);
   const [qvDragStart, setQvDragStart] = useState({ x: 0, y: 0 });
+  const [qvSpinKey, setQvSpinKey] = useState(0);
+  const [qvIsSpinning, setQvIsSpinning] = useState(false);
+  const qvDragMovedRef = useRef(false);
+  const qvSpinTimerRef = useRef(null);
 
   useEffect(() => {
     setQvZoom(1);
     setQvPan({ x: 0, y: 0 });
     setQvDragging(false);
+    setQvSpinKey(0);
+    setQvIsSpinning(false);
+    if (qvSpinTimerRef.current) {
+      clearTimeout(qvSpinTimerRef.current);
+      qvSpinTimerRef.current = null;
+    }
   }, [quickViewProduct?.key]);
+
+  useEffect(() => () => {
+    if (qvSpinTimerRef.current) clearTimeout(qvSpinTimerRef.current);
+  }, []);
+
+  const triggerQvSpin = () => {
+    ShopSFX.spin();
+    setQvSpinKey((prev) => prev + 1);
+    setQvIsSpinning(true);
+    if (qvSpinTimerRef.current) clearTimeout(qvSpinTimerRef.current);
+    qvSpinTimerRef.current = setTimeout(() => {
+      setQvIsSpinning(false);
+    }, 620);
+  };
 
   const adjustQvZoom = (delta) => {
     ShopSFX.click();
@@ -370,27 +394,46 @@ export default function Layout({ children }) {
                 adjustQvZoom(e.deltaY < 0 ? 0.25 : -0.25);
               }}
               onMouseDown={(e) => {
+                qvDragMovedRef.current = false;
                 if (qvZoom <= 1) return;
                 setQvDragging(true);
                 setQvDragStart({ x: e.clientX - qvPan.x, y: e.clientY - qvPan.y });
               }}
               onMouseMove={(e) => {
                 if (!qvDragging || qvZoom <= 1) return;
-                setQvPan({ x: e.clientX - qvDragStart.x, y: e.clientY - qvDragStart.y });
+                const nx = e.clientX - qvDragStart.x;
+                const ny = e.clientY - qvDragStart.y;
+                if (Math.abs(nx - qvPan.x) > 3 || Math.abs(ny - qvPan.y) > 3) {
+                  qvDragMovedRef.current = true;
+                }
+                setQvPan({ x: nx, y: ny });
               }}
               onMouseUp={() => setQvDragging(false)}
               onMouseLeave={() => setQvDragging(false)}
             >
-              <div key={quickViewProduct.key} className="qv-spin-frame">
-                <img
-                  src={quickViewProduct.imageUrl}
-                  alt={quickViewProduct.name}
-                  draggable={false}
-                  style={{
-                    transform: `translate3d(${qvPan.x}px, ${qvPan.y}px, 0) scale(${qvZoom})`,
-                    transition: qvDragging ? 'none' : 'transform 0.16s ease-out'
+              <div className={`qv-float-stage ${qvZoom <= 1 && !qvIsSpinning ? 'qv-float-gentle' : ''}`}>
+                <div
+                  key={`${quickViewProduct.key}-${qvSpinKey}`}
+                  className={`qv-spin-frame ${qvSpinKey > 0 ? 'qv-click-spinning' : ''}`}
+                  title="Bấm vào sản phẩm để xoay 360°"
+                  onClick={() => {
+                    if (qvDragMovedRef.current) {
+                      qvDragMovedRef.current = false;
+                      return;
+                    }
+                    triggerQvSpin();
                   }}
-                />
+                >
+                  <img
+                    src={quickViewProduct.imageUrl}
+                    alt={quickViewProduct.name}
+                    draggable={false}
+                    style={{
+                      transform: `translate3d(${qvPan.x}px, ${qvPan.y}px, 0) scale(${qvZoom})`,
+                      transition: qvDragging ? 'none' : 'transform 0.16s ease-out'
+                    }}
+                  />
+                </div>
               </div>
 
               <div className="qv-zoom-controls" onClick={(e) => e.stopPropagation()}>
@@ -405,6 +448,14 @@ export default function Layout({ children }) {
                 </button>
                 <button
                   type="button"
+                  className="qv-zoom-btn qv-spin-trigger-btn"
+                  title="Xoay 360°"
+                  onClick={triggerQvSpin}
+                >
+                  ↻
+                </button>
+                <button
+                  type="button"
                   className="qv-zoom-btn"
                   disabled={qvZoom >= 3}
                   title="Phóng to"
@@ -413,6 +464,7 @@ export default function Layout({ children }) {
                   +
                 </button>
               </div>
+              <div className="qv-click-spin-hint">✨ Bấm vào ảnh để xoay 360°</div>
             </div>
             <div className="qv-info">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
