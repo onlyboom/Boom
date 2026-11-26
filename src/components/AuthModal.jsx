@@ -104,7 +104,7 @@ export default function AuthModal() {
       <div className="auth-modal-card" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Tài khoản AG STORE">
         <div className="auth-modal-head">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <img src="/ag-logo.jpg" alt="AG" style={{ width: 40, height: 40, borderRadius: 11, objectFit: 'cover' }} />
+            <img src="/ag-logo.jpg?v=2" alt="LAGE" style={{ width: 40, height: 40, borderRadius: 11, objectFit: 'cover' }} />
             <div>
               <h3 style={{ margin: 0, color: '#fff', fontSize: 17 }}>
                 {authModalMode === 'register' ? 'Đăng Ký Tài Khoản AG STORE' : 'Đăng Nhập Tài Khoản'}

@@ -173,7 +173,7 @@ export default function SalesChatWidget() {
           <div className="sales-chat-header">
             <div className="sales-chat-head-left">
               <div className="sales-chat-avatar">
-                <img src="/ag-logo.jpg" alt="AG" />
+                <img src="/ag-logo.jpg?v=2" alt="LAGE" />
                 <span className="sales-chat-online-dot" />
               </div>
               <div>

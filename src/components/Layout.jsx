@@ -184,7 +184,7 @@ export default function Layout({ children }) {
         <header className={`site-header ${scrolled ? 'scrolled' : ''}`} id="siteHeader">
           <div className="header-main">
             <Link className="brand-logo" to="/" title="AG STORE — Trang chủ">
-              <img src="/ag-logo.jpg" alt="AG STORE Logo" />
+              <img src="/ag-logo.jpg?v=2" alt="LAGE Store Logo" />
             </Link>
 
             <nav className="header-nav" aria-label="Điều hướng chính">
@@ -301,7 +301,7 @@ export default function Layout({ children }) {
             <div className="footer-main-grid">
               <div>
                 <Link className="brand-logo footer-logo" to="/" title="Trang chủ AG STORE">
-                  <img src="/ag-logo.jpg" alt="AG Logo" />
+                  <img src="/ag-logo.jpg?v=2" alt="LAGE Logo" />
                 </Link>
                 <p className="footer-brand-desc">
                   Hệ thống trưng bày mẫu mô hình lắp ghép &amp; đồ chơi sỉ tận xưởng. Đặt giữ hàng trực tiếp trên catalog và nhận báo giá ưu đãi riêng qua Zalo.

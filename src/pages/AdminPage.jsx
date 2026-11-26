@@ -638,7 +638,7 @@ export default function AdminPage() {
       <div className="admin-shell">
         <div className="admin-login-box">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-            <img src="/ag-logo.jpg" alt="AG" style={{ width: 48, height: 48, borderRadius: 12, objectFit: 'cover' }} />
+            <img src="/ag-logo.jpg?v=2" alt="LAGE" style={{ width: 48, height: 48, borderRadius: 12, objectFit: 'cover' }} />
             <div>
               <h2 style={{ margin: 0, color: '#fff', fontSize: 19 }}>🛡️ Quản Trị AG STORE</h2>
               <p style={{ margin: '3px 0 0', fontSize: 12, color: '#94a3b8' }}>

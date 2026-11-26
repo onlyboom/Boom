@@ -70,7 +70,7 @@ export default function HomePage() {
             {latestPosts.map((post) => (
               <Link key={post.id || post.slug} to={`/bai-viet/${encodeURIComponent(post.slug)}`} className="post-card">
                 <div className="post-cover">
-                  <img src={post.cover_url || '/ag-logo.jpg'} alt={post.title} loading="lazy" />
+                  <img src={post.cover_url || '/ag-logo.jpg?v=2'} alt={post.title} loading="lazy" />
                 </div>
                 <div className="post-card-body">
                   <span className="post-cat-badge">{post.category || 'Tin kho hàng'}</span>
