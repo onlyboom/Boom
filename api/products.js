@@ -25,10 +25,15 @@ export default async function handler(req, res) {
       return sendJson(res, 500, { ok: false, error: error.message });
     }
 
-    // Chỉ trả về sản phẩm đang bật trưng bày (is_visible !== false) cho giao diện công khai
+    // Chỉ trả về sản phẩm đang bật trưng bày VÀ có ảnh sản phẩm thật (bỏ trống sản phẩm không có ảnh)
     const items = (data || [])
       .map(mapProductRow)
-      .filter((p) => p.isVisible !== false);
+      .filter((p) => {
+        if (p.isVisible === false) return false;
+        const img = String(p.imageUrl || '').trim();
+        if (!img || img === '/ag-logo.jpg' || img.endsWith('/ag-logo.jpg')) return false;
+        return true;
+      });
 
     return sendJson(res, 200, {
       ok: true,

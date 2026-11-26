@@ -388,16 +388,39 @@ export default function Layout({ children }) {
               </div>
               {quickViewProduct.giaLe > 0 && (
                 <div className="qv-price-box">
-                  <span>Giá niêm yết:</span>
+                  <span>Giá bán lẻ đề xuất:</span>
                   <strong>{quickViewProduct.giaLe.toLocaleString('vi-VN')}đ</strong>
                   {quickViewProduct.donVi && <small>/ {quickViewProduct.donVi === 'PDQ' ? 'hộp' : quickViewProduct.donVi}</small>}
                 </div>
               )}
-              {(quickViewProduct.quyCach || quickViewProduct.ghiChu) && (
-                <p style={{ fontSize: 12.5, color: '#cbd5e1', margin: '0 0 10px', lineHeight: 1.5 }}>
-                  📦 {quickViewProduct.quyCach || quickViewProduct.ghiChu}
-                </p>
-              )}
+
+              <div className="qv-spec-grid">
+                <div className="qv-spec-row">
+                  <span>Mã sản phẩm</span>
+                  <strong>{quickViewProduct.code}</strong>
+                </div>
+                <div className="qv-spec-row">
+                  <span>Danh mục</span>
+                  <strong>{quickViewProduct.category}</strong>
+                </div>
+                <div className="qv-spec-row">
+                  <span>Đơn vị bán</span>
+                  <strong>{quickViewProduct.donVi || 'Hộp'}</strong>
+                </div>
+                <div className="qv-spec-row">
+                  <span>Tình trạng kho</span>
+                  <strong style={{ color: quickViewProduct.isOutOfStock ? '#fda4af' : '#6ee7b7' }}>
+                    {quickViewProduct.isOutOfStock ? 'Tạm hết hàng' : `Còn hàng (${quickViewProduct.soLuong} sp)`}
+                  </strong>
+                </div>
+                {(quickViewProduct.quyCach || quickViewProduct.ghiChu) && (
+                  <div className="qv-spec-row full">
+                    <span>Quy cách / Kích thước</span>
+                    <strong>{quickViewProduct.quyCach || quickViewProduct.ghiChu}</strong>
+                  </div>
+                )}
+              </div>
+
               <div style={{ fontSize: 12.5, fontWeight: 700, color: '#fbbf24', marginBottom: 14 }}>
                 💰 Giá sỉ / Nguyên thùng chiết khấu sâu: Nhắn Zalo hoặc đặt Tổng Bill để nhận báo giá tốt nhất
               </div>

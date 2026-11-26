@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 
@@ -15,9 +14,12 @@ export default function ProductCard({ product }) {
   const isSelected = Boolean(multiSelected?.[product.key]);
 
   return (
-    <article className={`p-card ${pickedQty > 0 ? 'picked' : ''} ${isSelected ? 'multi-selected' : ''} ${isOut ? 'out' : ''}`}>
+    <article
+      className={`p-card ${pickedQty > 0 ? 'picked' : ''} ${isSelected ? 'multi-selected' : ''} ${isOut ? 'out' : ''}`}
+      onClick={() => openQuickView(product.key)}
+    >
       <div className="p-card-inner">
-        <div className="p-img-wrap" onClick={() => openQuickView(product.key)}>
+        <div className="p-img-wrap p-img-cosmic">
           <span className={`p-badge-stock ${isOut ? 'out' : ''}`}>
             {isOut ? 'Tạm hết' : `Sẵn ${product.soLuong}`}
           </span>
@@ -35,19 +37,17 @@ export default function ProductCard({ product }) {
               {isSelected ? <Check size={13} strokeWidth={3} /> : null}
             </button>
           )}
-          <img src={product.imageUrl} loading="lazy" alt={product.name} />
-          <span className="p-zoom-hint">🔄 Xem to 360°</span>
+          <div className="p-img-float-box">
+            <img src={product.imageUrl} loading="lazy" alt={product.name} />
+          </div>
+          <span className="p-zoom-hint">🔄 Xem chi tiết 360°</span>
         </div>
 
         <div className="p-body">
           <div className="p-cat">{product.category}</div>
-          <Link
-            to={`/san-pham/${encodeURIComponent(product.key)}`}
-            className="p-name"
-            style={{ textDecoration: 'none' }}
-          >
+          <div className="p-name" title={product.name}>
             {product.name}
-          </Link>
+          </div>
 
           <div className="p-meta-row">
             <span className="p-price-badge">
@@ -59,7 +59,7 @@ export default function ProductCard({ product }) {
             </span>
           </div>
 
-          <div className="p-actions">
+          <div className="p-actions" onClick={(e) => e.stopPropagation()}>
             {isOut ? (
               <button type="button" className="btn-add-primary" disabled>
                 Tạm hết hàng

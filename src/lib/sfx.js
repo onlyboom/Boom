@@ -59,43 +59,45 @@ class ShopSfxEngine {
     osc.stop(now + 0.055);
   }
 
-  // Âm thanh xoay khung hình 360° trong 0.25s (swirl/whoosh mượt)
+  // Âm thanh xoay khung hình 360° trong 0.25s (swirl + chime vui tai)
   spin() {
     const ctx = this.ensureCtx();
     if (!ctx) return;
     const now = ctx.currentTime;
 
-    // 1. Tần số quét vòng xoay
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(280, now);
-    osc.frequency.exponentialRampToValueAtTime(860, now + 0.14);
-    osc.frequency.exponentialRampToValueAtTime(520, now + 0.25);
-    gain.gain.setValueAtTime(0.005, now);
-    gain.gain.linearRampToValueAtTime(0.11, now + 0.09);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.27);
+    // 1. Giai điệu xoay lấp lánh vui tai (rising chime 0.25s)
+    [440, 587.33, 783.99, 1046.5].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const t = now + i * 0.052;
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.12, t + 0.06);
+      gain.gain.setValueAtTime(0.005, t);
+      gain.gain.linearRampToValueAtTime(0.095, t + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.095);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.1);
+    });
 
-    // 2. Tiếng gió xoáy nhẹ bằng filtered noise
+    // 2. Tiếng gió xoáy mượt bằng filtered noise
     const bufSize = Math.floor(ctx.sampleRate * 0.25);
     const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
     const data = buf.getChannelData(0);
-    for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.35;
+    for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.3;
     const noise = ctx.createBufferSource();
     noise.buffer = buf;
     const filter = ctx.createBiquadFilter();
     filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(600, now);
-    filter.frequency.exponentialRampToValueAtTime(2200, now + 0.14);
-    filter.frequency.exponentialRampToValueAtTime(900, now + 0.25);
-    filter.Q.value = 2.4;
+    filter.frequency.setValueAtTime(700, now);
+    filter.frequency.exponentialRampToValueAtTime(2600, now + 0.13);
+    filter.frequency.exponentialRampToValueAtTime(1100, now + 0.25);
+    filter.Q.value = 2.6;
     const nGain = ctx.createGain();
     nGain.gain.setValueAtTime(0.005, now);
-    nGain.gain.linearRampToValueAtTime(0.09, now + 0.1);
+    nGain.gain.linearRampToValueAtTime(0.08, now + 0.09);
     nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
     noise.connect(filter);
     filter.connect(nGain);
