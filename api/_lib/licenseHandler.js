@@ -1,6 +1,6 @@
 import crypto from 'crypto';
-import { getServerDb } from './_lib/db.js';
-import { getQuery, readJsonBody, sendJson } from './_lib/http.js';
+import { getServerDb } from './db.js';
+import { getQuery, readJsonBody, sendJson } from './http.js';
 
 const VAULT_BUCKET = 'zalotool-license-vault';
 
@@ -52,7 +52,7 @@ function generateLicenseKey() {
   return `LAGE-${seg()}-${seg()}-${seg()}`;
 }
 
-export default async function handler(req, res) {
+export async function handleLicenseRequest(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -76,12 +76,24 @@ export default async function handler(req, res) {
         readVaultJson(db, 'settings.json', { plans: [] }),
         readVaultJson(db, 'releases.json', { latestVersion: '2.3.0', downloadUrl: '', releaseNotes: '' })
       ]);
+      const plans = (Array.isArray(settings?.plans) ? settings.plans : [])
+        .filter((p) => p && p.enabled !== false)
+        .map((p) => ({
+          ...p,
+          id: p.code || p.id,
+          code: p.code || p.id,
+          name: p.label || p.name,
+          label: p.label || p.name
+        }));
       return sendJson(res, 200, {
         ok: true,
-        plans: (Array.isArray(settings?.plans) ? settings.plans : []).filter((p) => p && p.enabled !== false),
+        plans,
         bank: {
+          bankId: settings?.bankName || '',
           bankName: settings?.bankName || '',
+          accountNo: settings?.bankAccount || '',
           bankAccount: settings?.bankAccount || '',
+          accountName: settings?.bankOwner || '',
           bankOwner: settings?.bankOwner || '',
           contactZalo: settings?.contactZalo || '',
           hasQrReady: Boolean((settings?.bankBin && settings?.bankAccount) || settings?.customQrUrl)
@@ -111,7 +123,7 @@ export default async function handler(req, res) {
           ok: true,
           valid: false,
           code: 'NO_KEY',
-          message: 'Vui lòng nhập Mã Bản Quyền (License Key) để sử dụng phần mềm.',
+          message: 'Vui lòng nhập Mã Bản Quyền (License Key) hoặc quét QR đăng ký gói tháng.',
           latestVersion,
           updateAvailable,
           downloadUrl: releases?.downloadUrl || '',
@@ -142,7 +154,6 @@ export default async function handler(req, res) {
       const now = Date.now();
       let dirty = false;
 
-      // Gắn cứng mã máy (HWID) ở lần kích hoạt đầu tiên
       if (!lic.hwid && hwid) {
         lic.hwid = hwid;
         lic.pcName = pcName || lic.pcName || '';
@@ -178,6 +189,10 @@ export default async function handler(req, res) {
         await writeVaultJson(db, 'licenses.json', { licenses: list });
       }
 
+      const daysLeft = lic.expiresAt
+        ? Math.max(0, Math.ceil((new Date(lic.expiresAt).getTime() - now) / 86400000))
+        : 9999;
+
       return sendJson(res, 200, {
         ok: true,
         valid: true,
@@ -185,8 +200,10 @@ export default async function handler(req, res) {
         license: {
           licenseKey: lic.licenseKey,
           customerName: lic.customerName || '',
+          planName: lic.planLabel || 'Bản Quyền',
           planLabel: lic.planLabel || 'Bản Quyền',
-          expiresAt: lic.expiresAt || null
+          expiresAt: lic.expiresAt || null,
+          daysLeft
         },
         latestVersion,
         updateAvailable,
@@ -198,19 +215,20 @@ export default async function handler(req, res) {
     // 3. Tạo đơn thanh toán QR theo gói tháng cho khách ngay trong .exe
     if (req.method === 'POST' && action === 'create-payment') {
       const body = await readJsonBody(req);
-      const planCode = String(body.planCode || '').trim();
+      const planCode = String(body.planCode || body.planId || '').trim();
       const customerName = String(body.customerName || '').trim().slice(0, 80);
       const customerPhone = String(body.customerPhone || '').trim().slice(0, 30);
       const hwid = String(body.hwid || '').trim();
       const pcName = String(body.pcName || '').trim().slice(0, 80);
 
       const settings = await readVaultJson(db, 'settings.json', { plans: [] });
-      const plan = (Array.isArray(settings?.plans) ? settings.plans : []).find((p) => p.code === planCode);
+      const plan = (Array.isArray(settings?.plans) ? settings.plans : []).find(
+        (p) => p.code === planCode || p.id === planCode
+      );
       if (!plan) {
         return sendJson(res, 400, { ok: false, error: 'Gói bản quyền không hợp lệ!' });
       }
 
-      // Nếu là gói Dùng Thử miễn phí (price === 0) -> tự cấp Key dùng thử ngay (giới hạn 1 lần / HWID)
       if (Number(plan.price || 0) <= 0) {
         const licData = await readVaultJson(db, 'licenses.json', { licenses: [] });
         const list = Array.isArray(licData?.licenses) ? licData.licenses : [];
@@ -278,12 +296,23 @@ export default async function handler(req, res) {
         ok: true,
         autoIssued: false,
         orderCode,
+        transferContent: orderCode,
+        planName: plan.label,
         planLabel: plan.label,
+        days: Number(plan.days || 30),
+        amount: Number(plan.price || 0),
         amountVnd: Number(plan.price || 0),
+        qrImageUrl: qrUrl,
         qrUrl,
+        bank: {
+          bankId: settings?.bankName || '',
+          accountNo: settings?.bankAccount || '',
+          accountName: settings?.bankOwner || ''
+        },
         bankName: settings?.bankName || '',
         bankAccount: settings?.bankAccount || '',
         bankOwner: settings?.bankOwner || '',
+        supportZalo: settings?.contactZalo || '',
         contactZalo: settings?.contactZalo || ''
       });
     }
