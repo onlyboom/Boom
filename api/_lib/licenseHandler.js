@@ -548,7 +548,18 @@ export async function handleLicenseRequest(req, res) {
 
       const orderCode = `KEY${Math.floor(100000 + Math.random() * 899999)}`;
       const qrUrl = buildVietQrUrl(settings, plan.price, orderCode);
-      const ordersData = await readVaultJson(db, 'orders.json', { orders: [] });
+      const [ordersData, fraudData] = await Promise.all([
+        readVaultJson(db, 'orders.json', { orders: [] }),
+        readVaultJson(db, 'fraud_blacklist.json', { hwids: [] })
+      ]);
+      const blockedHwids = Array.isArray(fraudData?.hwids) ? fraudData.hwids : [];
+      if (hwid && blockedHwids.includes(hwid)) {
+        return sendJson(res, 403, {
+          ok: false,
+          error: '⛔ Thiết bị này đã bị khóa tự động cấp Key do có đơn chưa thanh toán trước đó. Vui lòng liên hệ trực tiếp Zalo Admin để mở khóa!'
+        });
+      }
+
       const orders = Array.isArray(ordersData?.orders) ? ordersData.orders : [];
       orders.unshift({
         orderCode,
@@ -561,6 +572,7 @@ export async function handleLicenseRequest(req, res) {
         hwid,
         pcName,
         status: 'pending',
+        auditStatus: 'waiting_transfer',
         issuedLicenseKey: '',
         createdAt: new Date().toISOString(),
         paidAt: null
@@ -592,19 +604,68 @@ export async function handleLicenseRequest(req, res) {
       });
     }
 
-    // 4. Máy khách tự kiểm tra đơn thanh toán QR mỗi 5 giây -> có Key là tự mở khóa luôn!
-    if (req.method === 'GET' && action === 'check-payment') {
-      const orderCode = String(q.orderCode || '').trim().toUpperCase();
+    // 4. Máy khách tự kiểm tra hoặc Tự động nhả Key ngay khi khách quét QR xong (autoIssue=1 hoặc action=claim-payment)
+    if ((req.method === 'GET' || req.method === 'POST') && (action === 'check-payment' || action === 'claim-payment')) {
+      const body = req.method === 'POST' ? await readJsonBody(req) : {};
+      const orderCode = String(q.orderCode || body.orderCode || '').trim().toUpperCase();
+      const autoClaim = action === 'claim-payment' || String(q.autoClaim || body.autoClaim || '') === '1';
       if (!orderCode) return sendJson(res, 400, { ok: false, error: 'Thiếu orderCode' });
-      const ordersData = await readVaultJson(db, 'orders.json', { orders: [] });
-      const order = (Array.isArray(ordersData?.orders) ? ordersData.orders : []).find(
-        (o) => String(o?.orderCode || '').toUpperCase() === orderCode
-      );
+
+      const [ordersData, licData] = await Promise.all([
+        readVaultJson(db, 'orders.json', { orders: [] }),
+        readVaultJson(db, 'licenses.json', { licenses: [] })
+      ]);
+      const orders = Array.isArray(ordersData?.orders) ? ordersData.orders : [];
+      const order = orders.find((o) => String(o?.orderCode || '').toUpperCase() === orderCode);
       if (!order) return sendJson(res, 404, { ok: false, error: 'Không tìm thấy đơn thanh toán' });
+
+      // Nếu khách đã quét QR và yêu cầu tự động nhả Key ngay (không cần đợi Admin duyệt tay)
+      if (autoClaim && order.status === 'pending' && !order.issuedLicenseKey) {
+        const list = Array.isArray(licData?.licenses) ? licData.licenses : [];
+        const now = Date.now();
+        const newKey = generateLicenseKey();
+        const days = Math.max(1, Number(order.durationDays || 30));
+        const amountVnd = Number(order.amountVnd || 0);
+        const expiresAtIso = new Date(now + days * 86400000).toISOString();
+
+        list.unshift({
+          id: `lic_${now}`,
+          licenseKey: newKey,
+          customerName: order.customerName || 'Khách QR',
+          customerPhone: order.customerPhone || '',
+          planCode: order.planCode || 'month_1',
+          planLabel: order.planLabel || 'Gói 1 Tháng',
+          priceVnd: amountVnd,
+          durationDays: days,
+          status: 'active',
+          hwid: order.hwid || '',
+          pcName: order.pcName || '',
+          activatedAt: order.hwid ? new Date(now).toISOString() : null,
+          expiresAt: expiresAtIso,
+          lastSeenAt: new Date(now).toISOString(),
+          note: `⚡ Tự nhả Key QR #${order.orderCode} (${amountVnd.toLocaleString('vi-VN')}đ — Chờ Admin check)`,
+          createdAt: new Date(now).toISOString()
+        });
+
+        order.status = 'paid';
+        order.auditStatus = 'auto_unverified'; // Để Admin thấy rõ đơn tự nhả Key cần đối soát tiền
+        order.issuedLicenseKey = newKey;
+        order.paidAt = new Date(now).toISOString();
+
+        await Promise.all([
+          writeVaultJson(db, 'licenses.json', { licenses: list }),
+          writeVaultJson(db, 'orders.json', { orders })
+        ]);
+      }
+
       return sendJson(res, 200, {
         ok: true,
         orderCode: order.orderCode,
         status: order.status,
+        auditStatus: order.auditStatus || (order.status === 'paid' ? 'verified' : 'waiting_transfer'),
+        planLabel: order.planLabel,
+        amountVnd: order.amountVnd,
+        durationDays: order.durationDays,
         issuedLicenseKey: order.status === 'paid' ? order.issuedLicenseKey || '' : ''
       });
     }
