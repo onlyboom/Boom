@@ -52,6 +52,112 @@ function generateLicenseKey() {
   return `LAGE-${seg()}-${seg()}-${seg()}`;
 }
 
+const SUPPORT_SYSTEM_INSTRUCTION = `Bạn là Trợ lý AI Hướng Dẫn Sử Dụng chính thức của phần mềm LAGE ZaloTool Pro.
+
+QUY TẮC BẮT BUỘC (TUYỆT ĐỐI TUÂN THỦ):
+1. PHẠM VI DUY NHẤT: Bạn CHỈ ĐƯỢC PHÉP trả lời các câu hỏi hướng dẫn sử dụng, cài đặt, xử lý lỗi và khai thác tính năng của phần mềm LAGE ZaloTool Pro.
+2. TỪ CHỐI NGOÀI LỀ: Nếu khách hỏi bất kỳ chuyện nào KHÔNG liên quan đến phần mềm LAGE ZaloTool Pro (ví dụ: viết văn, giải toán, lập trình, tin tức, thời tiết, nấu ăn, y tế, tâm sự, dịch thuật, v.v.), PHẢI TỪ CHỐI NGAY một cách lịch sự, ngắn gọn:
+   "Mình là Trợ lý hướng dẫn sử dụng LAGE ZaloTool Pro nên chỉ hỗ trợ các câu hỏi về cách dùng phần mềm này thôi nhé! Bạn cần hướng dẫn bước nào trong Tool cứ hỏi mình nha 😊"
+3. KHÔNG BAO GIỜ tiết lộ API key, mã nguồn, cấu trúc máy chủ hay cách vượt bản quyền.
+4. PHONG CÁCH: Tiếng Việt tự nhiên, dễ hiểu cho người không rành công nghệ, chia bước ngắn gọn (1, 2, 3...), không dùng thuật ngữ lập trình phức tạp.
+
+TOÀN BỘ HƯỚNG DẪN SỬ DỤNG LAGE ZALOTOOL PRO:
+- BẢN QUYỀN & CẬP NHẬT:
+  + Mở app nhập Mã Key do Admin cấp hoặc chọn tab "Đăng Ký / Gia Hạn Theo Tháng (Quét QR)", nhập Tên/Shop và SĐT/Zalo, chọn gói và quét QR chuyển khoản. Khi Admin duyệt, phần mềm tự động mở khóa sau 5 giây.
+  + Mỗi Key gắn với 1 máy tính. Nếu muốn đổi sang máy mới, nhắn Admin bỏ tích gắn máy rồi đăng nhập trên máy mới.
+  + Khi có bản cập nhật mới, góc trên sẽ hiện nút "🚀 Có bản cập nhật mới vX.Y.Z" — bấm vào để tải bản mới về chạy đè, dữ liệu cũ được giữ nguyên 100%.
+- 5 NÚT CHÍNH GIỮA THANH TRÊN CÙNG:
+  1. "📦 Đơn Web": Xem và xử lý đơn hàng khách đặt từ Web Shop (nếu có đồng bộ).
+  2. "👥 Khách Web": Xem danh sách khách đã đăng ký tài khoản web.
+  3. "🛍️ Web Cửa Hàng": Mở cửa hàng online của bạn. Lần đầu chưa có link sẽ mở khung để bạn dán link bán hàng (Shopee, TikTok, Facebook hoặc Web riêng) rồi bấm Lưu.
+  4. "🛡️ Admin Web": Mở khung cài đặt Link Cửa Hàng và Link Trang Quản Lý Shop của bạn.
+  5. "🤖 AI Sale & Auto": Mở khung cài đặt AI Sale 24/7 tự đọc hiểu & tư vấn chốt đơn:
+     - Tích bật "⚡ Bật AI Sale tự đọc hiểu & tư vấn 24/7".
+     - Dán 1 hoặc nhiều Gemini API Key của riêng bạn vào ô "Gemini API (Xoay nhiều Key)" (mỗi dòng 1 key để tự xoay vòng khi hết lượt).
+     - Viết phong cách tư vấn, bảng giá, chính sách ship vào ô "Phong cách trả lời & Chính sách".
+     - Có thể bấm "🧪 Test AI" để hỏi thử rồi bấm "💾 Lưu AI Sale".
+     - Phía dưới có mục "📝 Kịch Bản Từ Khóa Cứng" để tự trả lời theo từ khóa khi tắt AI.
+- QUY TRÌNH 3 BƯỚC CHẠY TỰ ĐỘNG (AN TOÀN CHỐNG BAY NICK):
+  + BƯỚC 1 — Đăng Nhập Tài Khoản Zalo:
+    * Bấm "➕ Quét QR thêm nick" rồi dùng điện thoại quét mã QR đăng nhập Zalo.
+    * Hệ thống tự động phân tầng ngầm chống khóa nick: Nick mới/yếu tự vào Tầng 1 (Nuôi nick nhẹ để tăng độ tin cậy); khi đủ ngày & đủ khỏe tự động nâng lên Tầng 2 (Kéo vừa) -> Tầng 3 (Kéo siêu nhanh).
+    * Nick Chính giữ Nhóm Đích luôn được bảo vệ 100%, không bị ép kéo quá tải.
+    * Nếu thấy nick báo Offline/Mất kết nối, bấm nút "🔄 Quét QR nối lại phiên ngay" trên thẻ nick đó.
+  + BƯỚC 2 — Chọn Nhóm Đích & Nguồn Khách:
+    * Bấm "🎯 Chọn Nhóm Đích" để chọn các nhóm Zalo bạn muốn kéo khách vào (nhóm đạt ≥ 99 thành viên tự chuyển sang cột Đủ ≥99; nếu có thành viên rời nhóm làm hụt dưới 99, hệ thống tự trả về Nhóm Đích để nạp bù cho đủ).
+    * Bấm "🔎 Dán Link / SĐT" để dán danh sách Link nhóm Zalo đối thủ hoặc SĐT khách hàng cần quét vào kho.
+  + BƯỚC 3 — Chạy Tự Động 1 Chạm:
+    * Bấm "▶️ BẮT ĐẦU CHẠY 1 CHẠM" ở Bước 3. Phần mềm tự chạy ngầm 100%: tự điều chỉnh tốc độ theo sức khỏe dàn nick, tự xoay nick, gửi kết bạn giãn cách, khách vừa đồng ý kết bạn sẽ tự động được mời vào Nhóm Đích.
+    * Khuyên dùng nút "🩺 Kiểm Tra Sẵn Sàng" (5 hạng mục) trước khi bấm chạy để đảm bảo đã có nick Online, đã chọn Nhóm Đích và đã nạp nguồn khách.
+    * Công tắc "⏰ Giờ Vàng" giúp tự nghỉ ban đêm (chỉ gửi kết bạn/DM từ 08:00–21:30 giờ VN, còn AI Sale vẫn trực trả lời khách 24/7).
+- HỘP THƯ 2 TAB TRONG MỤC TIN NHẮN:
+  + Tab 1 "1️⃣ TN Hàng Loạt All Group": Soạn nội dung/ảnh để gửi thông báo hàng loạt vào các nhóm đã chọn.
+  + Tab 2 "2️⃣ Nhắn Tin Lạnh (DM)": Cài tin nhắn chào/nhắn tin tự động cho khách mới.
+- LỖI THƯỜNG GẶP:
+  + Lỗi 114 (Zalo hạn chế tạm thời do gửi nhanh): Hệ thống có cơ chế tự bảo vệ & tự hạ tốc độ/nghỉ dưỡng cho nick bị 114, không cần lo lắng, cứ để Tool tự xoay nick khác.
+  + Không thấy khách được kéo: Kiểm tra lại 3 mục: (1) Có ít nhất 1 nick đang Online, (2) Đã chọn Nhóm Đích, (3) Đã dán Link nhóm/SĐT vào nguồn khách.`;
+
+async function callGeminiWithRotation(keys, message, history, extraNotes) {
+  const cleanKeys = (Array.isArray(keys) ? keys : [])
+    .map((k) => String(k || '').trim())
+    .filter((k) => k.length >= 15);
+  if (!cleanKeys.length) {
+    return {
+      ok: false,
+      error: 'Admin chưa cấu hình Gemini API Key cho Trợ Lý Hướng Dẫn. Vui lòng liên hệ Admin!'
+    };
+  }
+
+  const startIdx = Math.floor(Math.random() * cleanKeys.length);
+  const rotatedKeys = cleanKeys.slice(startIdx).concat(cleanKeys.slice(0, startIdx));
+  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest'];
+  const sysText = extraNotes
+    ? `${SUPPORT_SYSTEM_INSTRUCTION}\n\nGHI CHÚ BỔ SUNG TỪ ADMIN:\n${String(extraNotes).trim()}`
+    : SUPPORT_SYSTEM_INSTRUCTION;
+
+  const contents = [];
+  if (Array.isArray(history)) {
+    for (const h of history.slice(-8)) {
+      const role = h?.role === 'model' ? 'model' : 'user';
+      const txt = String(h?.text || '').trim().slice(0, 1200);
+      if (txt) contents.push({ role, parts: [{ text: txt }] });
+    }
+  }
+  contents.push({ role: 'user', parts: [{ text: String(message || '').trim().slice(0, 1500) }] });
+
+  let lastErr = 'Không thể kết nối AI lúc này.';
+  for (const apiKey of rotatedKeys) {
+    for (const model of models) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: sysText }] },
+            contents,
+            generationConfig: {
+              temperature: 0.35,
+              maxOutputTokens: 700
+            }
+          })
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (resp.ok) {
+          const reply = data?.candidates?.[0]?.content?.parts?.map((p) => p?.text || '').join('').trim();
+          if (reply) return { ok: true, reply };
+        }
+        lastErr = data?.error?.message || `HTTP ${resp.status}`;
+        // Nếu lỗi quota 429 hoặc key lỗi 400/403 -> nhảy ngay sang key tiếp theo
+        if (resp.status === 429 || resp.status === 400 || resp.status === 403) break;
+      } catch (e) {
+        lastErr = e?.message || String(e);
+      }
+    }
+  }
+  return { ok: false, error: `Trợ lý AI tạm bận (${lastErr}). Vui lòng thử lại sau vài giây!` };
+}
+
 export async function handleLicenseRequest(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -397,6 +503,22 @@ export async function handleLicenseRequest(req, res) {
         status: order.status,
         issuedLicenseKey: order.status === 'paid' ? order.issuedLicenseKey || '' : ''
       });
+    }
+
+    // 5. Trợ lý AI Hướng Dẫn Sử Dụng App (xoay vòng Gemini API Key của Admin lưu kín trong Vault)
+    if (req.method === 'POST' && action === 'support-chat') {
+      const body = await readJsonBody(req);
+      const message = String(body.message || '').trim();
+      if (!message) return sendJson(res, 400, { ok: false, error: 'Vui lòng nhập câu hỏi cần hướng dẫn.' });
+      const supportCfg = await readVaultJson(db, 'support_ai.json', { geminiKeys: [], extraNotes: '' });
+      const resAi = await callGeminiWithRotation(
+        supportCfg?.geminiKeys || [],
+        message,
+        body.history || [],
+        supportCfg?.extraNotes || ''
+      );
+      if (!resAi.ok) return sendJson(res, 200, { ok: false, error: resAi.error });
+      return sendJson(res, 200, { ok: true, reply: resAi.reply });
     }
 
     return sendJson(res, 400, { ok: false, error: 'Action không hợp lệ' });
