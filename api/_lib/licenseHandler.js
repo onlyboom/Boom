@@ -127,6 +127,41 @@ async function callGeminiWithRotation(keys, message, history, extraNotes) {
 
   let lastErr = 'Không thể kết nối AI lúc này.';
   for (const apiKey of rotatedKeys) {
+    // Tự động nhận diện Key OpenAI (sk-...) hoặc Gemini (AIza...)
+    if (apiKey.startsWith('sk-')) {
+      try {
+        const oaiMsgs = [{ role: 'system', content: sysText }];
+        for (const c of contents) {
+          oaiMsgs.push({
+            role: c.role === 'model' ? 'assistant' : 'user',
+            content: c.parts?.[0]?.text || ''
+          });
+        }
+        const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: oaiMsgs,
+            temperature: 0.35,
+            max_tokens: 700
+          })
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (resp.ok) {
+          const reply = String(data?.choices?.[0]?.message?.content || '').trim();
+          if (reply) return { ok: true, reply };
+        }
+        lastErr = data?.error?.message || `OpenAI HTTP ${resp.status}`;
+      } catch (e) {
+        lastErr = e?.message || String(e);
+      }
+      continue;
+    }
+
     for (const model of models) {
       try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
