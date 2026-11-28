@@ -15,12 +15,14 @@ import {
   RefreshCw,
   Check,
   MessageCircle,
-  Send
+  Send,
+  KeyRound
 } from 'lucide-react';
 import {
   checkAdminSession,
   loginAdmin,
   logoutAdmin,
+  changeAdminPassword,
   fetchAdminProducts,
   createAdminProduct,
   updateAdminProduct,
@@ -229,6 +231,41 @@ export default function AdminPage() {
       showToast(`❌ ${err?.message || 'Sai tài khoản hoặc mật khẩu'}`, true);
     } finally {
       setLoginBusy(false);
+    }
+  };
+
+  const [pwModalOpen, setPwModalOpen] = useState(false);
+  const [pwCurrent, setPwCurrent] = useState('');
+  const [pwNew, setPwNew] = useState('');
+  const [pwConfirm, setPwConfirm] = useState('');
+  const [pwBusy, setPwBusy] = useState(false);
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (!pwCurrent.trim() || !pwNew.trim()) {
+      showToast('Vui lòng nhập mật khẩu hiện tại và mật khẩu mới!', true);
+      return;
+    }
+    if (pwNew.trim().length < 6) {
+      showToast('Mật khẩu mới phải có ít nhất 6 ký tự!', true);
+      return;
+    }
+    if (pwNew.trim() !== pwConfirm.trim()) {
+      showToast('Mật khẩu nhập lại không khớp!', true);
+      return;
+    }
+    setPwBusy(true);
+    try {
+      await changeAdminPassword(pwCurrent.trim(), pwNew.trim());
+      setPwModalOpen(false);
+      setPwCurrent('');
+      setPwNew('');
+      setPwConfirm('');
+      showToast('✅ Đã đổi mật khẩu quản trị thành công!');
+    } catch (err) {
+      showToast(`❌ ${err?.message || 'Không thể đổi mật khẩu'}`, true);
+    } finally {
+      setPwBusy(false);
     }
   };
 
@@ -707,6 +744,14 @@ export default function AdminPage() {
           </button>
           <button
             type="button"
+            className="btn-cyan-soft"
+            onClick={() => setPwModalOpen(true)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(245, 158, 11, 0.16)', borderColor: 'rgba(251, 191, 36, 0.45)', color: '#fde68a' }}
+          >
+            <KeyRound size={14} /> Đổi mật khẩu
+          </button>
+          <button
+            type="button"
             className="btn-danger-soft"
             onClick={handleLogout}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
@@ -715,6 +760,91 @@ export default function AdminPage() {
           </button>
         </div>
       </div>
+
+      {pwModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            background: 'rgba(2, 6, 23, 0.72)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setPwModalOpen(false); }}
+        >
+          <form
+            onSubmit={handleChangePassword}
+            style={{
+              width: 'min(420px, 100%)',
+              background: '#0f172a',
+              border: '1px solid rgba(56, 189, 248, 0.35)',
+              borderRadius: 16,
+              padding: 22,
+              color: '#f8fafc',
+              boxShadow: '0 24px 60px rgba(0,0,0,0.55)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <strong style={{ fontSize: 16 }}>🔑 Đổi Mật Khẩu Quản Trị ({adminUsername})</strong>
+              <button
+                type="button"
+                onClick={() => setPwModalOpen(false)}
+                style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: 18, cursor: 'pointer' }}
+              >
+                ✖
+              </button>
+            </div>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12.5, fontWeight: 700, color: '#cbd5e1' }}>
+              Mật khẩu hiện tại
+              <input
+                type="password"
+                value={pwCurrent}
+                onChange={(e) => setPwCurrent(e.target.value)}
+                placeholder="Nhập mật khẩu đang dùng"
+                required
+                style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #334155', background: '#020617', color: '#fff', fontSize: 14 }}
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12.5, fontWeight: 700, color: '#cbd5e1' }}>
+              Mật khẩu mới (tối thiểu 6 ký tự)
+              <input
+                type="password"
+                value={pwNew}
+                onChange={(e) => setPwNew(e.target.value)}
+                placeholder="Nhập mật khẩu mới"
+                required
+                minLength={6}
+                style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #334155', background: '#020617', color: '#fff', fontSize: 14 }}
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12.5, fontWeight: 700, color: '#cbd5e1' }}>
+              Nhập lại mật khẩu mới
+              <input
+                type="password"
+                value={pwConfirm}
+                onChange={(e) => setPwConfirm(e.target.value)}
+                placeholder="Nhập lại mật khẩu mới"
+                required
+                minLength={6}
+                style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #334155', background: '#020617', color: '#fff', fontSize: 14 }}
+              />
+            </label>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 6 }}>
+              <button type="button" className="btn-danger-soft" onClick={() => setPwModalOpen(false)}>Hủy</button>
+              <button type="submit" className="btn-cyan-soft" disabled={pwBusy} style={{ fontWeight: 800 }}>
+                {pwBusy ? '⏳ Đang lưu...' : '💾 Lưu mật khẩu mới'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {!serverDbReady && (
         <div className="admin-alert-warn">

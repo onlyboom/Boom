@@ -64,6 +64,13 @@ export async function logoutAdmin() {
   return apiRequest('/api/admin/auth', { method: 'DELETE' });
 }
 
+export async function changeAdminPassword(currentPassword, newPassword) {
+  return apiRequest('/api/admin/auth', {
+    method: 'PUT',
+    body: { currentPassword, newPassword }
+  });
+}
+
 // ============================================================
 // ADMIN PRODUCTS & INVENTORY ENDPOINTS
 // ============================================================
