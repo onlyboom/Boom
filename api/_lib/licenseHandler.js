@@ -421,6 +421,11 @@ export async function handleLicenseRequest(req, res) {
         ? Math.max(0, Math.ceil((new Date(lic.expiresAt).getTime() - now) / 86400000))
         : 9999;
 
+      const privateDownloadUrl =
+        updateAvailable && releases?.assetId
+          ? `https://lego-ag.vercel.app/api/license?action=download&key=${encodeURIComponent(lic.licenseKey)}`
+          : releases?.downloadUrl || '';
+
       return sendJson(res, 200, {
         ok: true,
         valid: true,
@@ -435,7 +440,7 @@ export async function handleLicenseRequest(req, res) {
         },
         latestVersion,
         updateAvailable,
-        downloadUrl: releases?.downloadUrl || '',
+        downloadUrl: privateDownloadUrl,
         releaseNotes: releases?.releaseNotes || ''
       });
     }
@@ -613,6 +618,54 @@ export async function handleLicenseRequest(req, res) {
       const resAi = await callGeminiWithRotation(db, supportCfg, message, body.history || []);
       if (!resAi.ok) return sendJson(res, 200, { ok: false, error: resAi.error });
       return sendJson(res, 200, { ok: true, reply: resAi.reply });
+    }
+
+    // 6. Tải bản cập nhật trực tiếp từ GitHub PRIVATE Repo (chỉ cho phép máy có Key bản quyền đang hoạt động!)
+    if (req.method === 'GET' && action === 'download') {
+      const rawKey = String(q.key || '').trim().toUpperCase();
+      if (!rawKey) {
+        res.statusCode = 403;
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        return res.end('⛔ Truy cập bị từ chối: Cần có Mã Bản Quyền hợp lệ để tải bản cập nhật.');
+      }
+      const [licData, releases, relAuth] = await Promise.all([
+        readVaultJson(db, 'licenses.json', { licenses: [] }),
+        readVaultJson(db, 'releases.json', {}),
+        readVaultJson(db, 'releases_auth.json', {})
+      ]);
+      const lic = (Array.isArray(licData?.licenses) ? licData.licenses : []).find(
+        (x) => String(x?.licenseKey || '').trim().toUpperCase() === rawKey
+      );
+      const isExpired = lic?.expiresAt && new Date(lic.expiresAt).getTime() < Date.now();
+      if (!lic || lic.status === 'locked' || isExpired) {
+        res.statusCode = 403;
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        return res.end('⛔ Mã Bản Quyền không hợp lệ, đã bị khóa hoặc đã hết hạn.');
+      }
+      if (!releases?.assetId || !relAuth?.githubToken || !relAuth?.githubOwner || !relAuth?.githubRepo) {
+        return sendJson(res, 404, { ok: false, error: 'Chưa có bản cập nhật nào trong kho Private.' });
+      }
+      const ghResp = await fetch(
+        `https://api.github.com/repos/${relAuth.githubOwner}/${relAuth.githubRepo}/releases/assets/${releases.assetId}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${relAuth.githubToken}`,
+            Accept: 'application/octet-stream',
+            'User-Agent': 'LAGE-ZaloTool-Updater',
+            'X-GitHub-Api-Version': '2022-11-28'
+          },
+          redirect: 'manual'
+        }
+      );
+      const signedUrl = ghResp.headers.get('location');
+      if (!signedUrl) {
+        return sendJson(res, 502, { ok: false, error: `Không tạo được link tải tạm từ GitHub (${ghResp.status})` });
+      }
+      res.statusCode = 302;
+      res.setHeader('Location', signedUrl);
+      res.setHeader('Cache-Control', 'no-store');
+      return res.end();
     }
 
     return sendJson(res, 400, { ok: false, error: 'Action không hợp lệ' });
