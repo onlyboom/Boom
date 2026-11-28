@@ -108,6 +108,11 @@ function keyFingerprint(apiKey) {
   return crypto.createHash('sha256').update(String(apiKey || '')).digest('hex').slice(0, 16);
 }
 
+function isGoogleGeminiKey(apiKey) {
+  const k = String(apiKey || '').trim();
+  return k.startsWith('AIza') || k.startsWith('AQ.');
+}
+
 async function callGeminiWithRotation(db, supportCfg, message, history) {
   const keys = Array.isArray(supportCfg?.geminiKeys) ? supportCfg.geminiKeys : [];
   const extraNotes = supportCfg?.extraNotes || '';
@@ -128,12 +133,13 @@ async function callGeminiWithRotation(db, supportCfg, message, history) {
   for (const k of cleanKeys) {
     const fp = keyFingerprint(k);
     const rec = usageByKey[fp];
+    const isFree = isGoogleGeminiKey(k);
     if (!rec || rec.dateVn !== todayVn) {
       usageByKey[fp] = {
         dateVn: todayVn,
         usedToday: 0,
-        limitPerDay: k.startsWith('AIza') ? FREE_DAILY_LIMIT_PER_KEY : 0,
-        status: k.startsWith('AIza') ? 'ready' : 'blocked_paid',
+        limitPerDay: isFree ? FREE_DAILY_LIMIT_PER_KEY : 0,
+        status: isFree ? 'ready' : 'blocked_paid',
         lastModel: '',
         lastUsedAt: null,
         lastError: ''
@@ -142,12 +148,13 @@ async function callGeminiWithRotation(db, supportCfg, message, history) {
     }
   }
 
-  // Lọc chỉ lấy các Key được phép chạy (chế độ Free Only chỉ chạy Gemini AIza... còn hạn mức hôm nay!)
+  // Lọc chỉ lấy các Key Gemini miễn phí (hỗ trợ cả AIza... lẫn AQ.... mới của Google AI Studio)
   const eligibleKeys = cleanKeys.filter((k) => {
-    if (freeOnly && !k.startsWith('AIza')) return false;
+    const isFree = isGoogleGeminiKey(k);
+    if (freeOnly && !isFree) return false;
     const fp = keyFingerprint(k);
     const rec = usageByKey[fp];
-    if (k.startsWith('AIza') && Number(rec?.usedToday || 0) >= FREE_DAILY_LIMIT_PER_KEY) return false;
+    if (isFree && Number(rec?.usedToday || 0) >= FREE_DAILY_LIMIT_PER_KEY) return false;
     return true;
   });
 
@@ -159,15 +166,22 @@ async function callGeminiWithRotation(db, supportCfg, message, history) {
     return {
       ok: false,
       error: hasOnlyOpenAi && freeOnly
-        ? '🛡️ Đang bật khóa CHỈ DÙNG FREE (0đ): Key OpenAI (sk-...) là API trả phí nên đã bị khóa. Admin vui lòng dán Key Gemini miễn phí (AIza...)!'
+        ? '🛡️ Đang bật khóa CHỈ DÙNG FREE (0đ): Key OpenAI (sk-...) là API trả phí nên đã bị khóa. Admin vui lòng dán Key Gemini miễn phí (AIza... hoặc AQ....)!'
         : '🛡️ Toàn bộ Key Gemini miễn phí hôm nay đã chạm hạn mức Free — hệ thống tự dừng để không phát sinh chi phí. Vui lòng thử lại ngày mai hoặc báo Admin thêm Key Gemini!'
     };
   }
 
   const startIdx = Math.floor(Math.random() * eligibleKeys.length);
   const rotatedKeys = eligibleKeys.slice(startIdx).concat(eligibleKeys.slice(0, startIdx));
-  // Ưu tiên model Gemini Free Tier nhẹ & hạn mức cao nhất trước
-  const models = ['gemini-2.5-flash-lite', 'gemini-2.0-flash-lite', 'gemini-2.5-flash', 'gemini-flash-latest'];
+  // Ưu tiên model Gemini Free Tier mới nhất & hạn mức cao nhất (chạy qua header x-goog-api-key cho cả AIza & AQ.)
+  const models = [
+    'gemini-3.1-flash-lite-preview',
+    'gemini-flash-lite-latest',
+    'gemini-3-flash-preview',
+    'gemini-flash-latest',
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-flash'
+  ];
   const sysText = extraNotes
     ? `${SUPPORT_SYSTEM_INSTRUCTION}\n\nGHI CHÚ BỔ SUNG TỪ ADMIN:\n${String(extraNotes).trim()}`
     : SUPPORT_SYSTEM_INSTRUCTION;
@@ -189,10 +203,13 @@ async function callGeminiWithRotation(db, supportCfg, message, history) {
 
     for (const model of models) {
       try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
         const resp = await fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey
+          },
           body: JSON.stringify({
             systemInstruction: { parts: [{ text: sysText }] },
             contents,
