@@ -107,16 +107,23 @@ export default async function handler(req, res) {
   if (req.method === 'PUT') {
     const session = getAdminSession(req);
     if (!session || !session.username) {
-      return sendJson(res, 401, { ok: false, error: 'Vui lòng đăng nhập quản trị trước khi đổi mật khẩu.' });
+      return sendJson(res, 401, { ok: false, error: 'Vui lòng đăng nhập quản trị trước khi đổi tài khoản / mật khẩu.' });
     }
     try {
       const body = await readJsonBody(req);
       const currentPassword = String(body.currentPassword || '').trim();
+      const newUsernameRaw = String(body.newUsername || '').trim();
       const newPassword = String(body.newPassword || '').trim();
-      if (!currentPassword || !newPassword) {
-        return sendJson(res, 400, { ok: false, error: 'Vui lòng nhập đầy đủ mật khẩu hiện tại và mật khẩu mới!' });
+      if (!currentPassword) {
+        return sendJson(res, 400, { ok: false, error: 'Vui lòng nhập mật khẩu hiện tại để xác nhận!' });
       }
-      if (newPassword.length < 6) {
+      if (!newUsernameRaw && !newPassword) {
+        return sendJson(res, 400, { ok: false, error: 'Vui lòng nhập Tên đăng nhập mới hoặc Mật khẩu mới!' });
+      }
+      if (newUsernameRaw && !/^[a-zA-Z0-9._-]{3,32}$/.test(newUsernameRaw)) {
+        return sendJson(res, 400, { ok: false, error: 'Tên đăng nhập mới phải từ 3–32 ký tự (chữ không dấu, số, dấu . _ -).' });
+      }
+      if (newPassword && newPassword.length < 6) {
         return sendJson(res, 400, { ok: false, error: 'Mật khẩu mới phải có ít nhất 6 ký tự!' });
       }
       const { db } = getServerDb();
@@ -124,17 +131,30 @@ export default async function handler(req, res) {
       if (!verified) {
         return sendJson(res, 401, { ok: false, error: 'Mật khẩu hiện tại không đúng!' });
       }
-      const newHash = hashPasswordScrypt(newPassword);
+      const updates = { updated_at: new Date().toISOString() };
+      const finalUsername = newUsernameRaw || session.username;
+      if (newUsernameRaw && newUsernameRaw.toLowerCase() !== session.username.toLowerCase()) {
+        updates.username = newUsernameRaw;
+      }
+      if (newPassword) {
+        updates.password_hash = hashPasswordScrypt(newPassword);
+      }
       const { error: upErr } = await db
         .from('zaloshop_admins')
-        .update({ password_hash: newHash, updated_at: new Date().toISOString() })
+        .update(updates)
         .ilike('username', session.username);
       if (upErr) {
-        return sendJson(res, 500, { ok: false, error: `Lỗi cập nhật mật khẩu: ${upErr.message}` });
+        return sendJson(res, 500, { ok: false, error: `Lỗi cập nhật: ${upErr.message}` });
       }
-      return sendJson(res, 200, { ok: true, message: 'Đổi mật khẩu thành công!' });
+      const newToken = createSessionToken(finalUsername);
+      setAdminCookie(res, newToken);
+      return sendJson(res, 200, {
+        ok: true,
+        username: finalUsername,
+        message: 'Đã cập nhật tài khoản & mật khẩu thành công!'
+      });
     } catch (err) {
-      return sendJson(res, 400, { ok: false, error: err?.message || 'Không thể đổi mật khẩu' });
+      return sendJson(res, 400, { ok: false, error: err?.message || 'Không thể cập nhật thông tin đăng nhập' });
     }
   }
 

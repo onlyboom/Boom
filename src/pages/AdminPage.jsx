@@ -235,6 +235,7 @@ export default function AdminPage() {
   };
 
   const [pwModalOpen, setPwModalOpen] = useState(false);
+  const [pwNewUser, setPwNewUser] = useState('');
   const [pwCurrent, setPwCurrent] = useState('');
   const [pwNew, setPwNew] = useState('');
   const [pwConfirm, setPwConfirm] = useState('');
@@ -242,28 +243,35 @@ export default function AdminPage() {
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
-    if (!pwCurrent.trim() || !pwNew.trim()) {
-      showToast('Vui lòng nhập mật khẩu hiện tại và mật khẩu mới!', true);
+    const nextUser = pwNewUser.trim();
+    const nextPass = pwNew.trim();
+    if (!pwCurrent.trim()) {
+      showToast('Vui lòng nhập mật khẩu hiện tại để xác nhận!', true);
       return;
     }
-    if (pwNew.trim().length < 6) {
+    if (!nextUser && !nextPass) {
+      showToast('Vui lòng nhập Tên đăng nhập mới hoặc Mật khẩu mới!', true);
+      return;
+    }
+    if (nextPass && nextPass.length < 6) {
       showToast('Mật khẩu mới phải có ít nhất 6 ký tự!', true);
       return;
     }
-    if (pwNew.trim() !== pwConfirm.trim()) {
+    if (nextPass && nextPass !== pwConfirm.trim()) {
       showToast('Mật khẩu nhập lại không khớp!', true);
       return;
     }
     setPwBusy(true);
     try {
-      await changeAdminPassword(pwCurrent.trim(), pwNew.trim());
+      const res = await changeAdminPassword(pwCurrent.trim(), nextPass, nextUser);
+      if (res?.username) setAdminUsername(res.username);
       setPwModalOpen(false);
       setPwCurrent('');
       setPwNew('');
       setPwConfirm('');
-      showToast('✅ Đã đổi mật khẩu quản trị thành công!');
+      showToast(`✅ Đã cập nhật thành công! Tài khoản hiện tại: ${res?.username || adminUsername}`);
     } catch (err) {
-      showToast(`❌ ${err?.message || 'Không thể đổi mật khẩu'}`, true);
+      showToast(`❌ ${err?.message || 'Không thể cập nhật thông tin đăng nhập'}`, true);
     } finally {
       setPwBusy(false);
     }
@@ -745,10 +753,10 @@ export default function AdminPage() {
           <button
             type="button"
             className="btn-cyan-soft"
-            onClick={() => setPwModalOpen(true)}
+            onClick={() => { setPwNewUser(adminUsername || ''); setPwModalOpen(true); }}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(245, 158, 11, 0.16)', borderColor: 'rgba(251, 191, 36, 0.45)', color: '#fde68a' }}
           >
-            <KeyRound size={14} /> Đổi mật khẩu
+            <KeyRound size={14} /> Đổi TK / Mật khẩu
           </button>
           <button
             type="button"
@@ -792,7 +800,7 @@ export default function AdminPage() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <strong style={{ fontSize: 16 }}>🔑 Đổi Mật Khẩu Quản Trị ({adminUsername})</strong>
+              <strong style={{ fontSize: 16 }}>🔑 Đổi Tên Đăng Nhập &amp; Mật Khẩu</strong>
               <button
                 type="button"
                 onClick={() => setPwModalOpen(false)}
@@ -802,7 +810,17 @@ export default function AdminPage() {
               </button>
             </div>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12.5, fontWeight: 700, color: '#cbd5e1' }}>
-              Mật khẩu hiện tại
+              Tên đăng nhập mới (chữ không dấu, số)
+              <input
+                type="text"
+                value={pwNewUser}
+                onChange={(e) => setPwNewUser(e.target.value)}
+                placeholder="VD: boomadmin"
+                style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #334155', background: '#020617', color: '#fff', fontSize: 14 }}
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12.5, fontWeight: 700, color: '#cbd5e1' }}>
+              Mật khẩu hiện tại (bắt buộc để xác nhận)
               <input
                 type="password"
                 value={pwCurrent}
@@ -813,14 +831,12 @@ export default function AdminPage() {
               />
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12.5, fontWeight: 700, color: '#cbd5e1' }}>
-              Mật khẩu mới (tối thiểu 6 ký tự)
+              Mật khẩu mới (để trống nếu chỉ đổi tên đăng nhập)
               <input
                 type="password"
                 value={pwNew}
                 onChange={(e) => setPwNew(e.target.value)}
-                placeholder="Nhập mật khẩu mới"
-                required
-                minLength={6}
+                placeholder="Tối thiểu 6 ký tự (tùy chọn)"
                 style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #334155', background: '#020617', color: '#fff', fontSize: 14 }}
               />
             </label>
@@ -831,8 +847,6 @@ export default function AdminPage() {
                 value={pwConfirm}
                 onChange={(e) => setPwConfirm(e.target.value)}
                 placeholder="Nhập lại mật khẩu mới"
-                required
-                minLength={6}
                 style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #334155', background: '#020617', color: '#fff', fontSize: 14 }}
               />
             </label>

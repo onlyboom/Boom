@@ -64,10 +64,10 @@ export async function logoutAdmin() {
   return apiRequest('/api/admin/auth', { method: 'DELETE' });
 }
 
-export async function changeAdminPassword(currentPassword, newPassword) {
+export async function changeAdminPassword(currentPassword, newPassword, newUsername = '') {
   return apiRequest('/api/admin/auth', {
     method: 'PUT',
-    body: { currentPassword, newPassword }
+    body: { currentPassword, newPassword, newUsername }
   });
 }
 
