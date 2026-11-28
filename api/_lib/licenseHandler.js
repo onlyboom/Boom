@@ -154,14 +154,37 @@ export async function handleLicenseRequest(req, res) {
       const now = Date.now();
       let dirty = false;
 
+      // Gắn cứng mã máy (HWID) ở lần kích hoạt đầu tiên (hoặc sau khi Admin bỏ tích cho phép đổi máy)
+      // LƯU Ý DOANH THU: KHÔNG BAO GIỜ cộng thêm hay reset expiresAt khi đổi máy!
       if (!lic.hwid && hwid) {
         lic.hwid = hwid;
         lic.pcName = pcName || lic.pcName || '';
-        lic.activatedAt = new Date(now).toISOString();
+        if (!lic.activatedAt) {
+          lic.activatedAt = new Date(now).toISOString();
+        }
         if (!lic.expiresAt && Number(lic.durationDays || 0) > 0 && Number(lic.durationDays) < 9000) {
           lic.expiresAt = new Date(now + Number(lic.durationDays) * 86400000).toISOString();
         }
         dirty = true;
+
+        // Nếu là Key dùng thử -> ghi vĩnh viễn HWID này vào trial_history.json để chống dùng lại sau khi hết 3 ngày
+        if (lic.planCode === 'trial_3d' || (Number(lic.durationDays || 0) <= 7 && Number(lic.priceVnd || 0) === 0)) {
+          const hist = await readVaultJson(db, 'trial_history.json', { records: [] });
+          const recs = Array.isArray(hist?.records) ? hist.records : [];
+          if (!recs.some((r) => r.hwid === hwid)) {
+            recs.unshift({
+              hwid,
+              pcName: pcName || lic.pcName || '',
+              customerName: lic.customerName || '',
+              customerPhone: lic.customerPhone || '',
+              licenseKey: lic.licenseKey,
+              planLabel: lic.planLabel || 'Dùng Thử 3 Ngày',
+              usedAt: new Date(now).toISOString(),
+              expiresAt: lic.expiresAt || null
+            });
+            await writeVaultJson(db, 'trial_history.json', { records: recs.slice(0, 2000) });
+          }
+        }
       } else if (lic.hwid && hwid && lic.hwid !== hwid) {
         return sendJson(res, 200, {
           ok: true,
@@ -230,20 +253,42 @@ export async function handleLicenseRequest(req, res) {
       }
 
       if (Number(plan.price || 0) <= 0) {
-        const licData = await readVaultJson(db, 'licenses.json', { licenses: [] });
+        const [licData, trialHist] = await Promise.all([
+          readVaultJson(db, 'licenses.json', { licenses: [] }),
+          readVaultJson(db, 'trial_history.json', { records: [] })
+        ]);
         const list = Array.isArray(licData?.licenses) ? licData.licenses : [];
+        const recs = Array.isArray(trialHist?.records) ? trialHist.records : [];
+        const cleanPhone = customerPhone.replace(/\D/g, '');
+
+        // Kiểm tra vĩnh viễn trong lịch sử dùng thử (chống tải lại .exe / xóa Key để xin thêm ngày miễn phí!)
+        const usedBefore = recs.find(
+          (r) =>
+            (hwid && r.hwid === hwid) ||
+            (cleanPhone.length >= 9 && String(r.customerPhone || '').replace(/\D/g, '') === cleanPhone)
+        );
         const existingTrial = hwid && list.find((x) => x.hwid === hwid && x.planCode === plan.code);
-        if (existingTrial) {
-          return sendJson(res, 200, {
-            ok: true,
-            autoIssued: true,
-            licenseKey: existingTrial.licenseKey,
-            message: 'Máy tính này đã nhận Key Dùng Thử trước đó — đã tự điền lại Key cũ cho bạn!'
+        if (usedBefore || existingTrial) {
+          const expIso = usedBefore?.expiresAt || existingTrial?.expiresAt || null;
+          const stillValid = existingTrial && existingTrial.status !== 'locked' && expIso && new Date(expIso).getTime() > Date.now();
+          if (stillValid) {
+            return sendJson(res, 200, {
+              ok: true,
+              autoIssued: true,
+              licenseKey: existingTrial.licenseKey,
+              message: 'Máy tính này đang có Key Dùng Thử còn hạn — đã tự điền lại Key cũ cho bạn!'
+            });
+          }
+          return sendJson(res, 403, {
+            ok: false,
+            error: '⛔ Máy tính hoặc SĐT này đã sử dụng hết lượt Dùng Thử 3 Ngày trước đó! Không thể nhận thêm ngày miễn phí — vui lòng chọn gói trả phí để tiếp tục.'
           });
         }
+
         const now = Date.now();
         const newKey = generateLicenseKey();
         const days = Math.max(1, Number(plan.days || 3));
+        const expiresAtIso = new Date(now + days * 86400000).toISOString();
         list.unshift({
           id: `lic_${now}`,
           licenseKey: newKey,
@@ -257,12 +302,25 @@ export async function handleLicenseRequest(req, res) {
           hwid,
           pcName,
           activatedAt: new Date(now).toISOString(),
-          expiresAt: new Date(now + days * 86400000).toISOString(),
+          expiresAt: expiresAtIso,
           lastSeenAt: new Date(now).toISOString(),
           createdAt: new Date(now).toISOString(),
           note: 'Tự động cấp gói dùng thử'
         });
-        await writeVaultJson(db, 'licenses.json', { licenses: list });
+        recs.unshift({
+          hwid,
+          pcName,
+          customerName: customerName || 'Khách Dùng Thử',
+          customerPhone,
+          licenseKey: newKey,
+          planLabel: plan.label,
+          usedAt: new Date(now).toISOString(),
+          expiresAt: expiresAtIso
+        });
+        await Promise.all([
+          writeVaultJson(db, 'licenses.json', { licenses: list }),
+          writeVaultJson(db, 'trial_history.json', { records: recs.slice(0, 2000) })
+        ]);
         return sendJson(res, 200, {
           ok: true,
           autoIssued: true,
