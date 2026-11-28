@@ -97,20 +97,77 @@ TOÀN BỘ HƯỚNG DẪN SỬ DỤNG LAGE ZALOTOOL PRO:
   + Lỗi 114 (Zalo hạn chế tạm thời do gửi nhanh): Hệ thống có cơ chế tự bảo vệ & tự hạ tốc độ/nghỉ dưỡng cho nick bị 114, không cần lo lắng, cứ để Tool tự xoay nick khác.
   + Không thấy khách được kéo: Kiểm tra lại 3 mục: (1) Có ít nhất 1 nick đang Online, (2) Đã chọn Nhóm Đích, (3) Đã dán Link nhóm/SĐT vào nguồn khách.`;
 
-async function callGeminiWithRotation(keys, message, history, extraNotes) {
-  const cleanKeys = (Array.isArray(keys) ? keys : [])
-    .map((k) => String(k || '').trim())
-    .filter((k) => k.length >= 15);
+const FREE_DAILY_LIMIT_PER_KEY = 200;
+
+function getVnDateStr() {
+  const vn = new Date(Date.now() + 7 * 3600 * 1000);
+  return vn.toISOString().slice(0, 10);
+}
+
+function keyFingerprint(apiKey) {
+  return crypto.createHash('sha256').update(String(apiKey || '')).digest('hex').slice(0, 16);
+}
+
+async function callGeminiWithRotation(db, supportCfg, message, history) {
+  const keys = Array.isArray(supportCfg?.geminiKeys) ? supportCfg.geminiKeys : [];
+  const extraNotes = supportCfg?.extraNotes || '';
+  const freeOnly = supportCfg?.freeOnly !== false; // Mặc định BẬT KHÓA FREE 100%
+  const cleanKeys = keys.map((k) => String(k || '').trim()).filter((k) => k.length >= 15);
   if (!cleanKeys.length) {
     return {
       ok: false,
-      error: 'Admin chưa cấu hình Gemini API Key cho Trợ Lý Hướng Dẫn. Vui lòng liên hệ Admin!'
+      error: 'Admin chưa cấu hình Gemini API Key miễn phí cho Trợ Lý Hướng Dẫn. Vui lòng liên hệ Admin!'
     };
   }
 
-  const startIdx = Math.floor(Math.random() * cleanKeys.length);
-  const rotatedKeys = cleanKeys.slice(startIdx).concat(cleanKeys.slice(0, startIdx));
-  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest'];
+  const todayVn = getVnDateStr();
+  const usageByKey = supportCfg?.usageByKey && typeof supportCfg.usageByKey === 'object' ? { ...supportCfg.usageByKey } : {};
+  let usageDirty = false;
+
+  // Chuẩn hóa bộ đếm theo ngày giờ VN
+  for (const k of cleanKeys) {
+    const fp = keyFingerprint(k);
+    const rec = usageByKey[fp];
+    if (!rec || rec.dateVn !== todayVn) {
+      usageByKey[fp] = {
+        dateVn: todayVn,
+        usedToday: 0,
+        limitPerDay: k.startsWith('AIza') ? FREE_DAILY_LIMIT_PER_KEY : 0,
+        status: k.startsWith('AIza') ? 'ready' : 'blocked_paid',
+        lastModel: '',
+        lastUsedAt: null,
+        lastError: ''
+      };
+      usageDirty = true;
+    }
+  }
+
+  // Lọc chỉ lấy các Key được phép chạy (chế độ Free Only chỉ chạy Gemini AIza... còn hạn mức hôm nay!)
+  const eligibleKeys = cleanKeys.filter((k) => {
+    if (freeOnly && !k.startsWith('AIza')) return false;
+    const fp = keyFingerprint(k);
+    const rec = usageByKey[fp];
+    if (k.startsWith('AIza') && Number(rec?.usedToday || 0) >= FREE_DAILY_LIMIT_PER_KEY) return false;
+    return true;
+  });
+
+  if (!eligibleKeys.length) {
+    if (usageDirty) {
+      await writeVaultJson(db, 'support_ai.json', { ...supportCfg, usageByKey }).catch(() => {});
+    }
+    const hasOnlyOpenAi = cleanKeys.every((k) => k.startsWith('sk-'));
+    return {
+      ok: false,
+      error: hasOnlyOpenAi && freeOnly
+        ? '🛡️ Đang bật khóa CHỈ DÙNG FREE (0đ): Key OpenAI (sk-...) là API trả phí nên đã bị khóa. Admin vui lòng dán Key Gemini miễn phí (AIza...)!'
+        : '🛡️ Toàn bộ Key Gemini miễn phí hôm nay đã chạm hạn mức Free — hệ thống tự dừng để không phát sinh chi phí. Vui lòng thử lại ngày mai hoặc báo Admin thêm Key Gemini!'
+    };
+  }
+
+  const startIdx = Math.floor(Math.random() * eligibleKeys.length);
+  const rotatedKeys = eligibleKeys.slice(startIdx).concat(eligibleKeys.slice(0, startIdx));
+  // Ưu tiên model Gemini Free Tier nhẹ & hạn mức cao nhất trước
+  const models = ['gemini-2.5-flash-lite', 'gemini-2.0-flash-lite', 'gemini-2.5-flash', 'gemini-flash-latest'];
   const sysText = extraNotes
     ? `${SUPPORT_SYSTEM_INSTRUCTION}\n\nGHI CHÚ BỔ SUNG TỪ ADMIN:\n${String(extraNotes).trim()}`
     : SUPPORT_SYSTEM_INSTRUCTION;
@@ -127,40 +184,8 @@ async function callGeminiWithRotation(keys, message, history, extraNotes) {
 
   let lastErr = 'Không thể kết nối AI lúc này.';
   for (const apiKey of rotatedKeys) {
-    // Tự động nhận diện Key OpenAI (sk-...) hoặc Gemini (AIza...)
-    if (apiKey.startsWith('sk-')) {
-      try {
-        const oaiMsgs = [{ role: 'system', content: sysText }];
-        for (const c of contents) {
-          oaiMsgs.push({
-            role: c.role === 'model' ? 'assistant' : 'user',
-            content: c.parts?.[0]?.text || ''
-          });
-        }
-        const resp = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: oaiMsgs,
-            temperature: 0.35,
-            max_tokens: 700
-          })
-        });
-        const data = await resp.json().catch(() => ({}));
-        if (resp.ok) {
-          const reply = String(data?.choices?.[0]?.message?.content || '').trim();
-          if (reply) return { ok: true, reply };
-        }
-        lastErr = data?.error?.message || `OpenAI HTTP ${resp.status}`;
-      } catch (e) {
-        lastErr = e?.message || String(e);
-      }
-      continue;
-    }
+    const fp = keyFingerprint(apiKey);
+    const rec = usageByKey[fp];
 
     for (const model of models) {
       try {
@@ -180,15 +205,37 @@ async function callGeminiWithRotation(keys, message, history, extraNotes) {
         const data = await resp.json().catch(() => ({}));
         if (resp.ok) {
           const reply = data?.candidates?.[0]?.content?.parts?.map((p) => p?.text || '').join('').trim();
-          if (reply) return { ok: true, reply };
+          if (reply) {
+            rec.usedToday = Number(rec.usedToday || 0) + 1;
+            rec.limitPerDay = FREE_DAILY_LIMIT_PER_KEY;
+            rec.status = rec.usedToday >= FREE_DAILY_LIMIT_PER_KEY ? 'quota_full' : 'ready';
+            rec.lastModel = model;
+            rec.lastUsedAt = new Date().toISOString();
+            rec.lastError = '';
+            await writeVaultJson(db, 'support_ai.json', { ...supportCfg, usageByKey }).catch(() => {});
+            return { ok: true, reply };
+          }
         }
         lastErr = data?.error?.message || `HTTP ${resp.status}`;
-        // Nếu lỗi quota 429 hoặc key lỗi 400/403 -> nhảy ngay sang key tiếp theo
-        if (resp.status === 429 || resp.status === 400 || resp.status === 403) break;
+        if (resp.status === 429) {
+          rec.status = 'quota_full';
+          rec.lastError = 'Chạm giới hạn Free Google (429)';
+          usageDirty = true;
+          break;
+        }
+        if (resp.status === 400 || resp.status === 403) {
+          rec.status = 'invalid';
+          rec.lastError = lastErr.slice(0, 120);
+          usageDirty = true;
+          break;
+        }
       } catch (e) {
         lastErr = e?.message || String(e);
       }
     }
+  }
+  if (usageDirty) {
+    await writeVaultJson(db, 'support_ai.json', { ...supportCfg, usageByKey }).catch(() => {});
   }
   return { ok: false, error: `Trợ lý AI tạm bận (${lastErr}). Vui lòng thử lại sau vài giây!` };
 }
@@ -545,13 +592,8 @@ export async function handleLicenseRequest(req, res) {
       const body = await readJsonBody(req);
       const message = String(body.message || '').trim();
       if (!message) return sendJson(res, 400, { ok: false, error: 'Vui lòng nhập câu hỏi cần hướng dẫn.' });
-      const supportCfg = await readVaultJson(db, 'support_ai.json', { geminiKeys: [], extraNotes: '' });
-      const resAi = await callGeminiWithRotation(
-        supportCfg?.geminiKeys || [],
-        message,
-        body.history || [],
-        supportCfg?.extraNotes || ''
-      );
+      const supportCfg = await readVaultJson(db, 'support_ai.json', { geminiKeys: [], extraNotes: '', freeOnly: true, usageByKey: {} });
+      const resAi = await callGeminiWithRotation(db, supportCfg, message, body.history || []);
       if (!resAi.ok) return sendJson(res, 200, { ok: false, error: resAi.error });
       return sendJson(res, 200, { ok: true, reply: resAi.reply });
     }
