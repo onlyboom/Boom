@@ -241,6 +241,13 @@ export async function handleLicenseRequest(req, res) {
       const planCode = String(body.planCode || body.planId || '').trim();
       const customerName = String(body.customerName || '').trim().slice(0, 80);
       const customerPhone = String(body.customerPhone || '').trim().slice(0, 30);
+      const phoneDigits = customerPhone.replace(/\D/g, '');
+      if (customerName.length < 2) {
+        return sendJson(res, 400, { ok: false, error: 'Vui lòng nhập đầy đủ Tên / Shop của bạn!' });
+      }
+      if (phoneDigits.length < 9 || phoneDigits.length > 11) {
+        return sendJson(res, 400, { ok: false, error: 'Vui lòng nhập đúng SĐT / Zalo liên hệ (9–11 chữ số)!' });
+      }
       const hwid = String(body.hwid || '').trim();
       const pcName = String(body.pcName || '').trim().slice(0, 80);
 
